@@ -1,0 +1,21 @@
+/* src/assets/css/tailwind.css */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    /* ... other color variables ... */
+
+    --primary: 222.2 47.4% 11.2%; /* This is the main primary color */
+    --primary-foreground: 210 40% 98%; /* This is the text color for on top of primary */
+  }
+
+  .dark {
+    /* ... dark mode variables ... */
+  }
+}
