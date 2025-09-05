@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 180 180">
+<?xml-stylesheet type="text/css" href="../users/css/main_layout.css" ?>
+  <defs>
+    <style>
+      .highcharts-color-1, .highcharts-color-2 {
+        fill: none;
+      }
+
+      .highcharts-color-3 {
+        fill: #3b80c2;
+      }
+
+      .highcharts-color-4 {
+        fill: #cfe2f0;
+      }
+
+      .highcharts-color-5 {
+        fill: #2c3e50;
+      }
+
+      .highcharts-color-2 {
+        stroke: var(--primary);
+        stroke-miterlimit: 10;
+      }
+    </style>
+  </defs>
+  <!-- Generator: Adobe Illustrator 28.6.0, SVG Export Plug-In . SVG Version: 1.2.0 Build 709)  -->
+  <g>
+    <g id="Layer_1">
+      <path class="highcharts-color-0" d="M-195.09-105.87"/>
+      <path class="highcharts-color-2 " d="M83.49,179.76"/>
+      <path class="highcharts-color-1" d="M0,180"/>
+      <path class="highcharts-color-1" d="M90,180"/>
+      <g>
+        <path class="highcharts-color-3" d="M11.27,12.41"/>
+        <g>
+          <path class="highcharts-color-3" d="M101.04,13.9"/>
+          <line class="highcharts-color-1" x1="156.66" y1="68.32" x2="156.66" y2="68.32"/>
+          <line class="highcharts-color-1" x1="154.77" y1="83.71" x2="160.41" y2="52.93"/>
+          <line class="highcharts-color-1" x1="160.41" y1="52.93" x2="160.41" y2="52.93"/>
+          <line class="highcharts-color-1" x1="164" y1="42.99" x2="164" y2="42.99"/>
+          <path class="highcharts-color-5" d="M127.1,13.68"/>
+          <path class="highcharts-color-2" d="M90,26.75"/>
+          <path class="highcharts-color-2" d="M96.51.24"/>
+          <path class="highcharts-color-1" d="M171.12,83.64"/>
+          <path class="highcharts-color-1" d="M8.88,95.81"/>
+          <path class="highcharts-color-1" d="M90,89.73"/>
+          <path class="highcharts-color-1" d="M179.61,81.41"/>
+          <path class="highcharts-color-5" d="M133.51,21.3c-13.3,2.4-11.18,1.92-17.12,2.93-2.55.44-6.7,1.09-10.83,1.54-1.78.19-3.52.33-6.9.58-1.82.14-3.33.24-4.38.31-1.43,19.6-2.86,39.2-4.29,58.79v4.26l64.77-6.01c.25-4.7,1.2-11.59,2.77-19.88,1.86-9.79,1.27-6.65,1.55-8.57,1.03-6.89,2.74-20.08,2.66-30.87-.03-4.05-3.39-7.52-7.43-7.19"/>
+          <path class="highcharts-color-3" d="M17.28,8.38c-6.54-1.03-11.37,5.19-11.17,11.48.06,2.03.21,4.2.48,6.49.49,4.26,1.13,6.65,2.6,12.88,3.42,14.44,5.46,23.05,6.66,32.02.55,4.07,1.21,10.34,1.26,18.2,11.59.16,23.3.26,35.14.29,12.02.03,23.91-.02,35.68-.14V16.36c-21.08,0-39.96-1.26-60.3-6.15l-10.35-1.84Z"/>
+          <path class="highcharts-color-4" d="M140.48,89.73v-29.96c0-11.33-9.19-20.52-20.52-20.52h-59.91c-11.33,0-20.52,9.19-20.52,20.52v29.96h100.96Z"/>
+          <path class="highcharts-color-1" d="M180,0"/>
+          <line class="highcharts-color-1" x1="180" y1="89.73" x2="-3.09" y2="89.73"/>
+          <path class="highcharts-color-1" d="M90,0"/>
+          <path class="highcharts-color-3" d="M109.8,89.73v-11.2c0-4.75-3.85-8.6-8.6-8.6h-22.41c-4.75,0-8.6,3.85-8.6,8.6v11.2h39.6Z"/>
+        </g>
+      </g>
+      <g>
+        <path class="highcharts-color-3" d="M168.73,166.92"/>
+        <g>
+          <path class="highcharts-color-3" d="M78.96,165.43"/>
+          <line class="highcharts-color-1" x1="23.34" y1="111.01" x2="23.34" y2="111.01"/>
+          <line class="highcharts-color-1" x1="25.23" y1="95.62" x2="19.59" y2="126.4"/>
+          <line class="highcharts-color-1" x1="19.59" y1="126.4" x2="19.59" y2="126.4"/>
+          <line class="highcharts-color-1" x1="16" y1="136.34" x2="16" y2="136.34"/>
+          <path class="highcharts-color-5" d="M52.9,165.65"/>
+          <path class="highcharts-color-2" d="M90,152.58"/>
+          <path class="highcharts-color-2" d="M83.49,179.09"/>
+          <path class="highcharts-color-1" d="M8.88,95.69"/>
+          <path class="highcharts-color-1" d="M171.12,83.52"/>
+          <path class="highcharts-color-1" d="M90,89.6"/>
+          <path class="highcharts-color-1" d="M.39,97.92"/>
+          <path class="highcharts-color-5" d="M46.49,158.03c13.3-2.4,11.18-1.92,17.12-2.93,2.55-.44,6.7-1.09,10.83-1.54,1.78-.19,3.52-.33,6.9-.58,1.82-.14,3.33-.24,4.38-.31,1.43-19.6,2.86-39.2,4.29-58.79v-4.26l-64.77,6.01c-.25,4.7-1.2,11.59-2.77,19.88-1.86,9.79-1.27,6.65-1.55,8.57-1.03,6.89-2.74,20.08-2.66,30.87.03,4.05,3.39,7.52,7.43,7.19"/>
+          <path class="highcharts-color-3" d="M162.72,170.95c6.54,1.03,11.37-5.19,11.17-11.48-.06-2.03-.21-4.2-.48-6.49-.49-4.26-1.13-6.65-2.6-12.88-3.42-14.44-5.46-23.05-6.66-32.02-.55-4.07-1.21-10.34-1.26-18.2-11.59-.16-23.3-.26-35.14-.29-12.02-.03-23.91.02-35.68.14v73.22c21.08,0,39.96,1.26,60.3,6.15l10.35,1.84Z"/>
+          <path class="highcharts-color-4" d="M39.52,89.6v29.96c0,11.33,9.19,20.52,20.52,20.52h59.91c11.33,0,20.52-9.19,20.52-20.52v-29.96H39.52Z"/>
+          <path class="highcharts-color-1" d="M0,179.33"/>
+          <line class="highcharts-color-1" y1="89.6" x2="183.09" y2="89.6"/>
+          <path class="highcharts-color-1" d="M90,179.33"/>
+          <path class="highcharts-color-3" d="M70.2,89.6v11.2c0,4.75,3.85,8.6,8.6,8.6h22.41c4.75,0,8.6-3.85,8.6-8.6v-11.2h-39.6Z"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
