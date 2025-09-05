@@ -1,7 +1,7 @@
 # Fleet Management Solution Overview
 This document describes the frontend component of a comprehensive Fleet Management solution. The complete system is designed to provide real-time tracking, management, and analytics for a fleet of vehicles.
-Combined with the API-Daemon, that is schedules the collection of data from different external data sources:
-* European OEM Truck manufactors data stream based on rFMS and/or a mockingserver (also a project)
+Combined with the **API-Daemon** [https://github.com/PeterAarts/API_daemon], that is schedules the collection of data from different external data sources:
+* European OEM Truck manufactors data stream based on rFMS and/or a **Mockingserver** ([https://github.com/PeterAarts/MockServer])
 * Weather data
 * RDW (Dutch MOT database)
 * Ability to extend with
@@ -10,17 +10,23 @@ Combined with the API-Daemon, that is schedules the collection of data from diff
 * * BodyBuilder data
 
 ## Core Capabilities
-* The Fleet Management solution offers a range of features to help organizations manage their vehicle fleet efficiently:
+The Fleet Management solution offers a range of features to help organizations manage their vehicle fleet efficiently:
 
-* Real-Time Vehicle Tracking: Monitor the live GPS location of all vehicles on an interactive map.
+* **Real-Time Vehicle Tracking**: Monitor the live GPS location of all vehicles on an interactive map.
 
-* Trip History & Replay: Review historical routes, stop durations, and travel times for any vehicle.
+* **Trip History & Replay**: Review historical routes, stop durations, and travel times for any vehicle.
 
-* Maintenance Scheduling: Track vehicle service history and receive alerts for upcoming maintenance based on mileage or time.
+* **Pre Departure Vehicle Check** Setup and maintain your own vehicle checklist, register the drivers result of the checklist, actionable repairs to workshop, settings values to validate external and/or internal policies
 
-* Driver Management: Assign drivers to vehicles and monitor performance metrics.
+* **Maintenance Scheduling**: Track vehicle service history and receive alerts for upcoming maintenance based on mileage or time or registered repairs
 
-* Reporting & Analytics: Generate detailed reports on fuel consumption, mileage, idle time, and more to optimize fleet performance.
+* **Rental registration**, assign your vehicles to a company renting one or more of your vehicles, and offering full services insight during rental period.
+
+* **Driver Management**: Assign drivers to vehicles and monitor performance metrics.Monitor drivetime based on TACHO workingstate changes.
+
+* **Geofencing**: define corridors, area's or POI per vehicle based on parameters like CO2 emission zone, speed, date/time and of course location (entering, leaving or both)
+
+* **Reporting & Analytics**: Generate detailed reports on fuel consumption, mileage, idle time, and more to optimize fleet performance.
 
 ## API Server & Authentication
 The solution is powered by a dedicated, secure backend API server.
