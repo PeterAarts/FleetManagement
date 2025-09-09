@@ -17,8 +17,8 @@
     </div>
 
     <div class="border rounded-lg overflow-x-auto">
-      <table class="min-w-full text-sm text-left">
-        <thead class="bg-white border-b dark:bg-gray-800">
+      <table class="min-w-full text-sm text-left light:bg-white ">
+        <thead class="bg-white border-b ">
           <tr>
             <th
               v-for="col in columns"
@@ -26,7 +26,7 @@
               @click="col.sortable ? $emit('sort', col.key) : null"
               scope="col"
               class="p-3 font-normal text-gray-500 bg-transparent"
-              :class="{ 'cursor-pointer  dark:hover:bg-gray-700': col.sortable }"
+              :class="{ 'cursor-pointer  dark:hover:bg-gray-200': col.sortable }"
             >
               <div class="flex items-center gap-2">
                 {{ col.label }}
@@ -41,7 +41,7 @@
             </th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+        <tbody class="bg-white divide-y hover:gray-200 ">
           <template v-if="isLoading">
             <tr v-for="i in 5" :key="`loader-${i}`">
               <td :colspan="columns.length + (canEdit || canDelete ? 1 : 0)" class="p-3">
@@ -57,7 +57,7 @@
             </tr>
           </template>
           <template v-else>
-            <tr v-for="item in paginatedData" :key="item.id" class="hover:bg-primary/10 dark:hover:bg-gray-800/50 group">
+            <tr v-for="item in paginatedData" :key="item.id" class="hover:bg-primary/10 dark:hover:bg-gray-200/50 group">
               <td v-for="col in columns" :key="col.key" class="p-3 whitespace-nowrap">
                 <slot :name="`cell-${col.key}`" :item="item" :value="getNestedValue(item, col.key)">
                   {{ getNestedValue(item, col.key) }}
@@ -137,7 +137,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { ArrowUp, ArrowDown, Pencil, Trash2, Trash2Icon, SquarePen } from 'lucide-vue-next';
-import * as XLSX from 'xlsx';
+
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
