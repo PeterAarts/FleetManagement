@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -26,8 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
+
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useRouter } from 'vue-router';
@@ -156,7 +158,7 @@ onMounted(() => {
       <Button variant="ghost" size="icon" class="relative h-8 w-8 rounded-full">
         <Mail class="h-5 w-5" />
       </Button>
-
+      <ThemeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <Button variant="ghost" class="font-semibold">

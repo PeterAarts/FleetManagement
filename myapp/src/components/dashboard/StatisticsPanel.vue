@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, nextTick } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useDashboardStore } from '@/stores/dashboardStore';
+import { useSettingsStore } from '@/stores/settingsStore'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 import StatisticsBadge from './StatisticsBadge.vue';
@@ -30,6 +31,9 @@ const {
   driverStatus,
   fleetDiagnostics
 } = storeToRefs(dashboardStore);
+
+const settingsStore = useSettingsStore(); 
+const { daysStatistics } = storeToRefs(settingsStore);
 
 const primaryColor = ref(null);
 
@@ -137,15 +141,13 @@ const activeGraphTitle = computed(() => {
         default: return 'Statistics';
     }
 });
-
-
 </script>
 
 <template>
   <Card>
     <CardHeader>
       <CardTitle>Fleet Usage Statistics</CardTitle>
-      <CardDescription>Daily average of {{ stats.kpis?.period || '...' }}</CardDescription>
+      <CardDescription>Daily average of {{ settingsStore.daysStatistics }}</CardDescription>
     </CardHeader>
     <CardContent class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <StatisticsBadge

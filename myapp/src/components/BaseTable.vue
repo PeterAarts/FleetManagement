@@ -45,18 +45,9 @@
 import { ref, computed } from 'vue';
 
 const props = defineProps({
-  columns: {
-    type: Array,
-    required: true, // e.g., [{ key: 'name', label: 'Name', sortable: true }]
-  },
-  data: {
-    type: Array,
-    required: true, // e.g., [{ _id: 1, name: 'Product A' }]
-  },
-  isLoading: {
-    type: Boolean,
-    default: false,
-  },
+  columns:    {type: Array,required: true, },
+  data:       {type: Array,required: true, },
+  isLoading:  {type: Boolean,default: false,},
 });
 
 // --- Sorting Logic ---
