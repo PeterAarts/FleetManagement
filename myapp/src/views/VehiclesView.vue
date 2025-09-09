@@ -18,8 +18,8 @@
       @delete="handleDelete"
     >
       <template #cell-fuelLevel="{ value }">
-        <div class="w-25 bg-gray-200 rounded-full h-1 dark:bg-gray-700">
-          <div class="bg-primary h-1 rounded-full" :style="{ width: value + '%' }"></div>
+        <div class="w-25 bg-gray-200 rounded-full h-1 ">
+          <div class="bg-primary h-1 rounded-full" :title="`${value}%`"   :style="{ width: value + '%' }"></div>
         </div>
       </template>
 

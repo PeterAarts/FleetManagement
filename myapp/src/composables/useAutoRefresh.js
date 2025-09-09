@@ -23,7 +23,7 @@ export function useAutoRefresh(refreshAction, refreshRateInMinutes) {
     }
     
     const intervalMs = rate * 60 * 1000;
-    console.log(`Auto-refresh enabled for this view every ${rate} minute(s).`);
+    //console.log(`Auto-refresh enabled for this view every ${rate} minute(s).`);
 
     // Fetch immediately on start, then set the interval
     refreshAction();

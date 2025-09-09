@@ -1,30 +1,49 @@
 <script setup>
-// ✅ UPDATED: onMounted and onUnmounted are no longer needed for refresh logic
-import { computed, ref } from 'vue'; 
-import { storeToRefs } from 'pinia'; 
+import { computed, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useVehiclesStore } from '@/stores/vehiclesStore';
+import { useAutoRefresh } from '@/composables/useAutoRefresh';
+
 import StatisticsPanel from '@/components/dashboard/StatisticsPanel.vue';
 import BaseMap from '@/components/BaseMap.vue';
-import { useAutoRefresh } from '@/composables/useAutoRefresh';
 import MapFilterButton from '@/components/dashboard/MapFilterButton.vue';
+import MapOptionsMenu from '@/components/BaseMap/MapOptionsMenu.vue';
+
 import { Navigation, Bed, Wrench, ParkingSquare as SquareParking , CalendarCheck2 } from 'lucide-vue-next';
 
-
+// --- State Management and Stores ---
 const dashboardStore = useDashboardStore();
 const settingsStore = useSettingsStore();
 const vehiclesStore = useVehiclesStore();
-const activeFilter = ref(null);
 
-// ✅ UPDATED: Use the correct 'vehicleAnalytics' getter
 const { vehicles, vehicleAnalytics } = storeToRefs(vehiclesStore);
 
+// --- Local State for UI Control ---
+const activeFilter = ref(null);
+const isOptionsOpen = ref(false);
+const activeMapStyle = ref('standard'); // Default style
+const activeTrafficLayers = ref({
+  incidents: false,
+  flow: false,
+});
+
+const toggleOptions = () => {
+  isOptionsOpen.value = !isOptionsOpen.value;
+};
+function handleStyleUpdate(styleId) {
+  activeMapStyle.value = styleId;
+}
+function handleTrafficUpdate(trafficState) {
+  activeTrafficLayers.value = trafficState;
+}
+// --- Computed Properties for Map Data ---
 const vehicleMarkers = computed(() => {
   return vehicles.value
     .filter(v => v.location?.latitude != null && v.location?.longitude != null)
     .map(v => ({
-      ...v, 
+      ...v,
       lat: v.location.latitude,
       lng: v.location.longitude,
     }));
@@ -46,6 +65,7 @@ const filteredMarkers = computed(() => {
   });
 });
 
+// --- Configuration for Filter Buttons ---
 const filterConfig = [
   { id: 'driving', label: 'Driving', icon: Navigation },
   { id: 'idle', label: 'Idle', icon: SquareParking },
@@ -54,6 +74,7 @@ const filterConfig = [
   { id: 'activeToday', label: 'Active Today', icon: CalendarCheck2 },
 ];
 
+// --- Methods ---
 const handleFilterClick = (filterId) => {
   activeFilter.value = activeFilter.value === filterId ? null : filterId;
 };
@@ -66,8 +87,8 @@ const isToday = (someDate) => {
     dateToCompare.getMonth() === today.getMonth() &&
     dateToCompare.getFullYear() === today.getFullYear();
 };
-dashboardStore.fetchDashboardData();
 
+// --- Data Fetching and Auto-Refresh ---
 vehiclesStore.fetchVehicles();
 dashboardStore.fetchDashboardData();
 useAutoRefresh(vehiclesStore.fetchVehicles, settingsStore.vehiclesRefreshRate);
@@ -78,26 +99,75 @@ useAutoRefresh(dashboardStore.fetchDashboardData, settingsStore.dashboardRefresh
 <template>
   <div class="h-full p-4 lg:p-6">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-      <div class="lg-col-span-1 space-y-6 overflow-y-auto">
+      
+      <div class="lg:col-span-1 space-y-6 overflow-y-auto">
         <StatisticsPanel />
       </div>
 
-       <div class="lg:col-span-1 bg-card rounded-lg shadow-sm border flex flex-col relative"> 
-        <div class="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2">
-          <MapFilterButton
-            v-for="filter in filterConfig"
-            :key="filter.id"
-            :icon="filter.icon"
-            :label="filter.label"
-            :count="vehicleAnalytics.statusCounts[filter.id] || 0"
-            :is-active="activeFilter === filter.id"
-            @click="handleFilterClick(filter.id)"
-          />
+      <div class="map-grid-container" :class="{ 'menu-open': isOptionsOpen }">
+        
+        <div class="map-wrapper">
+          <div class="absolute top-3 px-3 z-40 flex items-center gap-2">
+            <MapFilterButton
+              v-for="filter in filterConfig"
+              :key="filter.id"
+              :icon="filter.icon"
+              :label="filter.label"
+              :count="vehicleAnalytics.statusCounts[filter.id] || 0"
+              :is-active="activeFilter === filter.id"
+              @click="handleFilterClick(filter.id)"
+            />
+          </div>
+          <div class="flex-grow rounded-md overflow-hidden">
+            <BaseMap 
+              :markers="filteredMarkers" 
+              :map-style="activeMapStyle"
+              :traffic-layers="activeTrafficLayers"
+              @request-open-options="toggleOptions" 
+            />
+          </div>
         </div>
-        <div class="flex-grow rounded-md overflow-hidden">
-          <BaseMap :markers="filteredMarkers" />
+
+        <div class="options-wrapper">
+          <MapOptionsMenu 
+            :is-open="isOptionsOpen" 
+            :current-style="activeMapStyle" @close="toggleOptions"
+            @update:style="handleStyleUpdate"
+            @update:traffic="handleTrafficUpdate"
+          />
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.map-grid-container {
+  display: grid;
+  /* Map takes all available space, menu starts with 0 width */
+  grid-template-columns: 1fr 0;
+  border-radius: 0.5rem; /* from rounded-lg */
+  overflow: hidden; /* Important to contain the rounded corners */
+  transition: grid-template-columns 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  border: 1px solid hsl(var(--border));
+}
+
+.map-grid-container.menu-open {
+  /* When open, menu gets 320px, and the map column adjusts automatically */
+  grid-template-columns: 1fr 250px;
+}
+
+.map-wrapper {
+  grid-column: 1 / 2;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.options-wrapper {
+  grid-column: 2 / 3;
+  overflow: hidden; /* Hides the menu content until it has space */
+}
+</style>

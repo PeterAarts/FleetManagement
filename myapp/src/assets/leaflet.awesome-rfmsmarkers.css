@@ -1,0 +1,50 @@
+/* src/assets/css/leaflet.awesome-rfmsmarkers.css */
+
+/* Define a new color for 'driving' */
+.awesome-marker-icon-driving {
+  background-image: url('http://localhost:5173/rFMS_marker_dashboard.png');
+  background-position: 0 0 !important;
+}
+
+/* Define a new color for 'paused' */
+.awesome-marker-icon-paused {
+  background-image: url('http://localhost:5173/rFMS_marker_dashboard.png');
+  background-position: -30px 0 !important;
+}
+
+/* Define a new color for 'stopped' */
+.awesome-marker-icon-stopped {
+  background-image: url('http://localhost:5173/rFMS_marker_dashboard.png');
+  background-position: -90px 0 !important;
+}
+
+/* Define a new color for 'delayed' */
+.awesome-marker-icon-delayed {
+  background-image: url('http://localhost:5173/rFMS_marker_dashboard.png');
+  background-position: -60px 0 !important;
+}
+
+/* Define a new color for 'gray' */
+.awesome-marker-icon-gray {
+  background-image: url('http://localhost:5173/rFMS_marker_dashboard.png');
+  background-position: -150px 0 !important;
+}
+
+/* This rule applies to all custom markers to hide the default background and border */
+.awesome-marker-icon-driving,
+.awesome-marker-icon-paused,
+.awesome-marker-icon-stopped,
+.awesome-marker-icon-delayed,
+.awesome-marker-icon-gray {
+    border: none !important;
+    background-color: transparent !important; /* Hide the default color */
+}
+
+/* Style the icon inside the marker */
+.awesome-marker i {
+  color: #FFF; 
+  margin-top: 8px; /* Adjust for your specific icon size */
+  margin-left: 0px; 
+  display: inline-block; 
+  font-size: 12px;
+}

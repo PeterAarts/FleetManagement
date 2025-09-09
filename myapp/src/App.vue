@@ -11,3 +11,4 @@ authStore.tryAutoLogin();
 <template>
   <router-view />
 </template>
+
