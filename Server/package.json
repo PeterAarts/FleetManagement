@@ -10,16 +10,22 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
-    "express": "^5.1.0",
+    "express": "^4.19.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-mysql-session": "^3.0.3",
+    "express-rate-limit": "^8.1.0",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",
     "latest": "^0.2.0",
     "mariadb": "^3.4.5",
     "morgan": "^1.10.1",
+    "path-to-regexp": "^8.3.0",
     "sequelize": "^6.37.7",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
@@ -27,5 +33,6 @@
   "devDependencies": {
     "nodemon": "^3.1.10",
     "sequelize-auto": "^0.8.8"
-  }
+  },
+  "description": ""
 }
