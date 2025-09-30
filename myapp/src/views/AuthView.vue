@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import apiClient from '@/tools/apiClient';
@@ -24,6 +24,14 @@ const router = useRouter();
 const username = ref('');
 const password = ref('');
 const error = ref(null);
+const sessionMessage = ref('');
+
+onMounted(() => {
+  const route = useRoute();
+  if (route.query.reason === 'session-expired') {
+    sessionMessage.value = 'Your session has expired. Please log in again.';
+  }
+});
 
 const handleLogin = async () => {
   error.value = null;
@@ -44,27 +52,34 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="grid lg:grid-cols-4 min-h-screen bg-sky-950 text-white overflow-hidden">
+  <div class="grid lg:grid-cols-4 min-h-screen bg-primary-950 text-white overflow-hidden">
     <div class="flex items-center justify-center p-8 col-span-3">
       <div class="text-center">
-        <Truck class="mx-auto h-16 w-16" />
+        <Truck class="mx-auto h-16 w-16 text-primary-300" />
         <h1 class="mt-4 text-4xl font-bold">Welcome to Fleet Management NXT</h1>
         <p class="mt-2 text-gray-400">The next generation of fleet monitoring and management.</p>
         
         <Button 
           @click="showLogin = true"
           v-if="!showLogin"
-          class="mt-8 bg-primary"
+          class="mt-8 bg-primary-500"
           size="lg"
         >
           Login to Your Account <ArrowRight class="ml-2 h-5 w-5" />
         </Button>
+
+        <p v-if="sessionMessage" class="my-6  text-red-400 p-3 rounded-md mx-auto ">
+          {{ sessionMessage }}
+        </p>
       </div>
+      
     </div>
 
     <Transition name="slide-fade">
       <div v-if="showLogin" class="flex items-center justify-center bg-gray-100 text-black p-8">
+        
         <Card class="w-full max-w-sm border-none shadow-lg bg-white relative">
+     
           <Button 
             variant="ghost" 
             size="icon" 
@@ -72,6 +87,7 @@ const handleLogin = async () => {
             @click="showLogin = false"
           >
             <X class="h-5 w-5" />
+
           </Button>
 
           <CardHeader>
@@ -90,10 +106,13 @@ const handleLogin = async () => {
               </div>
               <div v-if="error" class="text-red-500 text-sm">{{ error }}</div>
               <div class="flex items-center justify-between mt-2">
-                <Button variant="link" class="p-0">Forgot password?</Button>
-                <Button type="submit" class="bg-primary">Login</Button>
+                <Button variant="link" class="p-0 text-gray-400 hover:text-primary-500">Forgot password?</Button>
+                <Button type="submit" class="bg-primary-500 text-white">Login</Button>
               </div>
             </form>
+            <div v-if="sessionMessage" class="my-4 bg-red-50 text-red-700 p-3 rounded-md text-sm border border-red-200">
+              {{ sessionMessage }}
+            </div>
           </CardContent>
         </Card>
       </div>

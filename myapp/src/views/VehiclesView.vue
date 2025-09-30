@@ -43,7 +43,6 @@ const settingsStore = useSettingsStore();
 // Reactive state from store
 const { vehicles: vehicles, isLoading } = storeToRefs(vehiclesStore);
 // ensure vehicles are fetched on mount and refreshed frequently
-vehiclesStore.fetchVehicles();
 useAutoRefresh(vehiclesStore.fetchVehicles, settingsStore.vehiclesRefreshRate);
 
 // Local state for the datatable
@@ -95,11 +94,7 @@ function handleDelete(item) {
   // }
 }
 
-onMounted(() => {
-  if (vehicles.value.length === 0 && !isLoading.value) {
-    vehiclesStore.fetchVehicles();
-  }
-});
+
 
 
 </script>

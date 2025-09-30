@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -17,7 +17,7 @@ import { Navigation, Bed, Wrench, ParkingSquare as SquareParking , CalendarCheck
 const dashboardStore = useDashboardStore();
 const settingsStore = useSettingsStore();
 const vehiclesStore = useVehiclesStore();
-
+const { selectedGroup } = storeToRefs(settingsStore);
 const { vehicles, vehicleAnalytics } = storeToRefs(vehiclesStore);
 
 // --- Local State for UI Control ---
@@ -87,11 +87,19 @@ const isToday = (someDate) => {
     dateToCompare.getMonth() === today.getMonth() &&
     dateToCompare.getFullYear() === today.getFullYear();
 };
+// Watch for group changes ---
+watch(selectedGroup, (newGroupId) => {
+  if (newGroupId) {
+    dashboardStore.fetchDashboardData();
+  }
+}, { immediate: true });
 
 // --- Data Fetching and Auto-Refresh ---
-vehiclesStore.fetchVehicles();
-dashboardStore.fetchDashboardData();
-useAutoRefresh(vehiclesStore.fetchVehicles, settingsStore.vehiclesRefreshRate);
+dashboardStore.fetchDashboardData(); // Dashboard-specific data still fetched here
+useAutoRefresh(
+  () => vehiclesStore.fetchVehicles({ isBackground: true }), 
+  settingsStore.vehiclesRefreshRate
+);
 useAutoRefresh(dashboardStore.fetchDashboardData, settingsStore.dashboardRefreshRate);
 
 </script>
@@ -104,7 +112,7 @@ useAutoRefresh(dashboardStore.fetchDashboardData, settingsStore.dashboardRefresh
         <StatisticsPanel />
       </div>
 
-      <div class="map-grid-container" :class="{ 'menu-open': isOptionsOpen }">
+       <div class="map-grid-container hidden lg:grid" :class="{ 'menu-open': isOptionsOpen }">
         
         <div class="map-wrapper">
           <div class="absolute top-3 px-3 z-40 flex items-center gap-2">
