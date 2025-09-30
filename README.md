@@ -9,6 +9,7 @@ Combined with the **API-Daemon** [https://github.com/PeterAarts/API_daemon], tha
 * * Trailer data 
 * * BodyBuilder data
 
+What is missing? => The Database structure !! On request I can provide a .sql file to create the database with some demodata.
 ## Core Capabilities
 The Fleet Management solution offers a range of features to help organizations manage their vehicle fleet efficiently:
 
