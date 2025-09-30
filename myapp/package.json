@@ -1,5 +1,5 @@
 {
-  "name": "FleetApp",
+  "name": "My-App",
   "private": true,
   "version": "1.0.0",
   "description": "Fleet Management NXT Application",
@@ -28,9 +28,11 @@
     "jspdf": "^3.0.2",
     "jspdf-autotable": "^5.0.2",
     "leaflet": "^1.9.4",
+    "leaflet-rotatedmarker": "^0.2.0",
     "leaflet.awesome-markers": "^2.0.5",
     "leaflet.markercluster": "^1.5.3",
     "lucide-vue-next": "^0.542.0",
+    "notiflix": "^3.2.8",
     "path": "^0.12.7",
     "pinia": "^3.0.3",
     "preline": "^3.2.3",
