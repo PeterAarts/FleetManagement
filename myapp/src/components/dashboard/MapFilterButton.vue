@@ -8,17 +8,15 @@ defineProps({
 </script>
 
 <template>
-  <button 
-    class="flex items-center gap-2 p-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+  <button :title="label"
+    class="flex items-center gap-2 p-3 py-2 rounded-lg text-sm font-medium text-gray-700 transition-colors shadow-sm"
     :class="isActive 
-      ? 'bg-primary text-white' 
-      : 'bg-card/80 text-card-foreground  hover:bg-primary/80 hover:text-white'"
+      ? 'bg-slate-300 hover:bg-slate-300 ' 
+      : 'text-card-foreground  hover:bg-slatey-300 '"
   >
-    <component :is="icon" class="h-5 w-7 text-slate-500" />
-    <!-- The label can be hidden on smaller screens if desired 
-    <span class="hidden sm:inline">{{ label }}</span>-->
+    <component :is="icon" class="h-5 w-7 " />
     <span 
-      class="px-1.5 py-.5 rounded-md text-xl font-semibold">
+      class="px-1.5 py-.5 rounded-md  font-semibold">
       {{ count }}
     </span>
   </button>

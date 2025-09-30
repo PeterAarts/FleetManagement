@@ -8,7 +8,7 @@ defineProps({
 });
 </script>
 <template>
-  <div class="space-y-1 rounded-lg bg-gray-50 p-3">
+  <div class="space-y-1 rounded-lg bg-gray-100 p-3">
     <p class="text-xs font-medium uppercase text-muted-foreground">{{ label }}</p>
     <div class="flex items-baseline justify-center gap-2">
       <p class="text-2xl font-bold">{{ value?.toFixed(1) }}</p>

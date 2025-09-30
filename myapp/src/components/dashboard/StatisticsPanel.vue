@@ -31,12 +31,10 @@ const {
   driverStatus,
   fleetDiagnostics
 } = storeToRefs(dashboardStore);
-
-const settingsStore = useSettingsStore(); 
-const { daysStatistics } = storeToRefs(settingsStore);
-
+const { settings } = storeToRefs(useSettingsStore.settings);
 const primaryColor = ref(null);
 
+console.log('Settings in StatisticsPanel:', settings);
 onMounted(() => {
   // This polling mechanism is correct and will stay.
   let attempts = 0;
@@ -147,7 +145,9 @@ const activeGraphTitle = computed(() => {
   <Card>
     <CardHeader>
       <CardTitle>Fleet Usage Statistics</CardTitle>
-      <CardDescription>Daily average of {{ settingsStore.daysStatistics }}</CardDescription>
+      <CardDescription v-if="settings && settings.settings">
+        Daily average of {{ settings?.settings.daysStatistics }} days
+      </CardDescription>
     </CardHeader>
     <CardContent class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <StatisticsBadge

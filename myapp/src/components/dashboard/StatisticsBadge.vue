@@ -33,8 +33,8 @@ const formattedTrend = computed(() => {
 
 <template>
   <div
-    class="group p-3 rounded-lg cursor-pointer transition-all flex items-center gap-3 bg-slate-50"
-    :class="isActive ? '' : ' hover:bg-slate-100'"
+    class="group p-3 rounded-lg cursor-pointer transition-all flex items-center gap-3 bg-slate-100"
+    :class="isActive ? 'hover:bg-slate-300 border border ' : ' hover:bg-slate-300'"
   >
     <div class="flex-shrink-0 bg-slate-100 p-2 rounded-md">
       <component :is="props.icon" class="h-5 w-5 text-slate-700" />

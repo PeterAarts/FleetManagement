@@ -4,7 +4,7 @@ const vehicleStatusCounts = { driving: 0, working: 1, stopped: 21, repair: 0 };
 </script>
 
 <template>
-  <div class="relative h-full w-full overflow-hidden rounded-lg shadow-md">
+  <div class="relative h-full w-full overflow-hidden rounded-lg shadow-lg">
     <div class="absolute top-4 left-4 z-10 flex gap-3 rounded-lg bg-white/70 p-2 shadow-lg backdrop-blur-sm">
       <div class="rounded p-2 text-center">
         <p class="text-lg font-bold">{{ vehicleStatusCounts.driving }}</p>
