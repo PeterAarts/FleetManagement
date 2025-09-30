@@ -1,47 +1,58 @@
 import express from 'express';
 import db from '../models/index.js';
-import { isAuthenticated } from '../middleware/isAuthenticated.js';
+import { sessionAuth } from '../middleware/sessionAuth.js';
 import { QueryTypes } from 'sequelize';
 
 const router = express.Router();
 const { Settings, sequelize } = db;
 
-router.get('/', isAuthenticated, async (req, res) => {
-  const { customerId } = req.user;
-  
+router.get('/', sessionAuth, async (req, res) => {
+  // CORRECT: Get both the selected ID and the user's primary ID from the session
+  const selectedCustomerId = req.user.selectedCustomerId;
+  const primaryCustomerId = req.user.customerId; // This is the user's main account ID
+
   try {
-    // 1. Define the promises for your database queries
+    // The settings should be fetched for the currently SELECTED customer
     const settingsPromise = Settings.findOne({
-      where: { customer_id: customerId }
+      where: { customer_id: selectedCustomerId }
     });
 
     const groupsQuery = `
       SELECT 
         c.id,
-        CONCAT(IF(c.id = :customerId, '*', ''), ' ', c.name) AS name
+        CONCAT(IF(c.id = :primaryCustomerId, '*', ''), ' ', c.name) AS name
       FROM 
         customer_customer cc  
         LEFT JOIN customers c ON c.id = cc.relatedCustomerId 
       WHERE 
-        cc.custId = :customerId AND cc.active = 1 AND CURDATE() BETWEEN cc.created AND cc.validUntil
+        -- CORRECT: The list of available groups should always be based on the PRIMARY customer ID
+        cc.custId = :primaryCustomerId AND 
+        cc.active = 1 AND 
+        CURDATE() BETWEEN cc.created AND cc.validUntil
       ORDER BY 
-        IF(c.id = :customerId, 0, 1), name ASC
+        IF(c.id = :primaryCustomerId, 0, 1), name ASC
     `;
+    
+    // The groups list should be fetched for the PRIMARY customer
     const groupsPromise = sequelize.query(groupsQuery, {
-      replacements: { customerId },
+      replacements: { 
+        primaryCustomerId: primaryCustomerId, // Use the correct ID here
+        selectedCustomerId: selectedCustomerId 
+      },
       type: QueryTypes.SELECT
     });
 
-    // 2. Await the results. This is where 'settings' is declared and initialized.
     const [settings, groups] = await Promise.all([settingsPromise, groupsPromise]);
 
-    // 3. Now it's safe to check if 'settings' exists.
     if (!settings) {
       return res.status(404).json({ message: 'Settings not found for this customer.' });
     }
 
-    // 4. Finally, send the response with the initialized variables.
-    res.json({ settings, groups });
+    res.json({ 
+      settings, 
+      groups,
+      selectedCustomerId: selectedCustomerId
+    });
 
   } catch (error) {
     console.error('Error fetching settings and groups:', error);

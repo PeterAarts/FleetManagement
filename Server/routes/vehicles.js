@@ -1,24 +1,26 @@
 import express from 'express';
-import { isAuthenticated } from '../middleware/isAuthenticated.js';
-import { validateGroupAccess } from '../middleware/validateGroupAccess.js';
+import { sessionAuth } from '../middleware/sessionAuth.js';
 import { VehicleService } from '../services/vehicleService.js';
+import { TrailerService } from '../services/trailerService.js';
 
 const router = express.Router();
 
-router.get('/', isAuthenticated, validateGroupAccess, async (req, res) => {
+router.get('/', sessionAuth, async (req, res) => {
   try {
-    // Collect all query options to pass to the service
+    // Collect query options (removed group from here)
     const options = {
       search: req.query.search,
       sortBy: req.query.sortBy,
       sortOrder: req.query.sortOrder,
       since: req.query.since, 
     };
-
+    
+    // Use selectedCustomerId from session (set by sessionAuth middleware)
+    const customerId = req.user.selectedCustomerId;
+    
     const result = await VehicleService.getProcessedVehicles(
-      req.user.customerId,
-      req.query.group,
-      options // Pass the updated options object to the service
+      customerId,
+      options
     );
     res.json(result);
   } catch (error) {
@@ -26,10 +28,14 @@ router.get('/', isAuthenticated, validateGroupAccess, async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
-router.get('/vehicles/:id', async (req, res) => {
+
+router.get('/:id', sessionAuth, async (req, res) => {
   try {
-    const { id } = req.params; // Get the VIN from the URL parameter
-    const vehicle = await VehicleService.getSingleVehicleDetails(id);
+    const { id } = req.params;
+    const vehicle = await VehicleService.getSingleVehicleDetails(
+      id, 
+      req.user.selectedCustomerId
+    );
     
     if (vehicle) {
       res.status(200).json(vehicle);
@@ -41,4 +47,105 @@ router.get('/vehicles/:id', async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+
+router.get('/:id/tpms', sessionAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tpmsData = await VehicleService.getVehicleTPMSData(
+      id, 
+      req.user.selectedCustomerId
+    );
+    
+    if (tpmsData) {
+      res.json(tpmsData);
+    } else {
+      res.status(404).json({ message: 'TPMS data not found for this vehicle' });
+    }
+  } catch (error) {
+    console.error(`Error fetching TPMS data for vehicle ${req.params.id}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/:id/driver', sessionAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const driverData = await VehicleService.getVehicleDriverData(
+      id, 
+      req.user.selectedCustomerId
+    );
+    
+    if (driverData) {
+      res.json(driverData);
+    } else {
+      res.status(404).json({ message: 'Driver data not found for this vehicle' });
+    }
+  } catch (error) {
+    console.error(`Error fetching driver data for vehicle ${req.params.id}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/:id/trips', sessionAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerId = req.user.selectedCustomerId;
+    const options = {
+      limit: req.query.limit,
+    };
+
+    const tripsData = await VehicleService.getVehicleTripsData(id, customerId, options);
+    
+    res.json(tripsData);
+
+  } catch (error) {
+    console.error(`Error fetching trips data for vehicle ${req.params.id}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+router.get('/:vehicleId/trips/:tripId', sessionAuth, async (req, res) => {
+  try {
+    // Correctly get BOTH vehicleId and tripId from the request parameters
+    const { vehicleId, tripId } = req.params;
+    const customerId = req.user.selectedCustomerId;
+
+    // Call the service method with the correct 3 parameters: vehicleId, tripId, customerId
+    const tripDetails = await VehicleService.getSingleTripDetails(
+      vehicleId,
+      tripId,
+      customerId
+    );
+    
+    // Check if the service found the trip
+    if (tripDetails) {
+      res.json(tripDetails);
+    } else {
+      res.status(404).json({ message: 'Trip not found or you do not have access to it.' });
+    }
+
+  } catch (error) {
+    // Updated error log for better debugging
+    console.error(`Error fetching details for vehicle ${req.params.vehicleId}, trip ${req.params.tripId}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/:id/trailer', sessionAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerId = req.user.selectedCustomerId;
+    
+    const trailerData = await TrailerService.getTrailerByVehicleId(id, customerId);
+    
+    if (trailerData) {
+      res.json(trailerData);
+    } else {
+      res.status(404).json({ message: 'No trailer found attached to this vehicle' });
+    }
+  } catch (error) {
+    console.error(`Error fetching trailer data for vehicle ${req.params.id}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 export default router;

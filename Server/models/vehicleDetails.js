@@ -53,6 +53,10 @@ export default function(sequelize) {
     TT_ENG_EMI_FAI:                   { type: DataTypes.BOOLEAN },
     TT_ADB_LEV:                       { type: DataTypes.BOOLEAN },
     
+    typeIconText:                     { type: DataTypes.STRING },
+    typeIconCode:                     { type: DataTypes.STRING },
+    tpmsVehicle:                      { type: DataTypes.BOOLEAN },
+    tpmsTrailer:                      { type: DataTypes.BOOLEAN },
   }, {
     tableName: 'v_vehicle_details', // Point to the view name
     timestamps: false

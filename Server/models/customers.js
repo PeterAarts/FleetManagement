@@ -10,8 +10,8 @@ export default function(sequelize) {
     serviceDescription:     {type: DataTypes.TEXT,allowNull: true},
     customerTypeId:         {type: DataTypes.INTEGER,allowNull: true,defaultValue: 1},
     dealer:                 {type: DataTypes.INTEGER,allowNull: true,defaultValue: 0},
-    createdDateTime:       {type: DataTypes.DATE,allowNull: true},
-    updatedDateTime:       {type: DataTypes.DATE,allowNull: true}
+    createdDateTime:        {type: DataTypes.DATE,allowNull: true},
+    updatedDateTime:        {type: DataTypes.DATE,allowNull: true}
   }, {
     tableName: 'customers',
     timestamps: true,
@@ -20,29 +20,22 @@ export default function(sequelize) {
   });
 
   Customer.associate = (models) => {
+    // Define the association using the actual join table that exists in your database
     Customer.belongsToMany(models.Customer, {
-      through: {
-        model: 'customer_customer',
-        timestamps: true,
-        createdAt: 'created',
-        updatedAt: 'updated',
-      },
+      through: 'customer_customer',  // Just the table name as a string
       as: 'AccessibleGroups',
       foreignKey: 'custId',
       otherKey: 'relatedCustomerId',
+      timestamps: false  // Disable timestamps for the through table
     });
 
-    // You should apply the same fix to the inverse relationship
+    // Inverse relationship
     Customer.belongsToMany(models.Customer, {
-      through: {
-        model: 'customer_customer',
-        timestamps: true,
-        createdAt: 'created',
-        updatedAt: 'updated',
-      },
+      through: 'customer_customer',  // Just the table name as a string
       as: 'PermittedViewers',
       foreignKey: 'relatedCustomerId',
       otherKey: 'custId',
+      timestamps: false  // Disable timestamps for the through table
     });
   };
 

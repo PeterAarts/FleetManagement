@@ -2,17 +2,17 @@
 
 import express from 'express';
 import db from '../models/index.js';
-import { isAuthenticated } from '../middleware/isAuthenticated.js';
+import { sessionAuth } from '../middleware/sessionAuth.js';
 import { QueryTypes } from 'sequelize';
 
 const router = express.Router();
 const { sequelize } = db;
 
-router.get('/', isAuthenticated, async (req, res) => {
+router.get('/', sessionAuth, async (req, res) => {
   // Use a default of 14 days, consistent with many dashboards
   const days = parseInt(req.query.days, 10) || 14;
   // In a multi-tenant app, you'd get this from the authenticated user
-  const { customerId } = req.user;
+  const customerId = req.user.selectedCustomerId;
 
   try {
     // --- Query 1: Advanced Statistics with Trend Calculation ---
