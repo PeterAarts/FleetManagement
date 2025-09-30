@@ -4,7 +4,7 @@ import Header from '@/components/Header.vue';
 </script>
 
 <template>
-  <div class="flex h-screen flex-col bg-gray-100">
+  <div class="flex h-screen flex-col bg-body ">
     <Header />
 
     <main class="flex-grow overflow-y-auto">
