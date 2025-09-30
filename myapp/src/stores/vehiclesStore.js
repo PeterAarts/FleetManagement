@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import apiClient from '@/tools/apiClient';
 import { useSettingsStore } from './settingsStore';
+import { useAuthStore } from './authStore';
 
 let pollingInterval = null;
 
@@ -24,12 +25,28 @@ const parseTimeToMinutes = (timeString) => {
 export const useVehiclesStore = defineStore('vehicles', {
   state: () => ({
     vehicles: [],
+    groups: [], // Add groups array to store
     isLoading: false,
     lastUpdated: null,
   }),
   getters: {
     canEdit: () => true,
     canDelete: () => true,
+    
+    // Group vehicles by their memberOf property
+    vehiclesByGroup(state) {
+      return state.vehicles.reduce((acc, vehicle) => {
+        const groupName = vehicle.memberOf || 'Uncategorized';
+        // If the group doesn't exist in the accumulator, create it
+        if (!acc[groupName]) {
+          acc[groupName] = [];
+        }
+        // Push the vehicle into its group
+        acc[groupName].push(vehicle);
+        return acc;
+      }, {}); // Start with an empty object
+    },
+    
     vehicleAnalytics(state) {
       const settingsStore = useSettingsStore();
       const speedingThreshold = settingsStore.settings?.speedingThreshold || 95;
@@ -97,23 +114,36 @@ export const useVehiclesStore = defineStore('vehicles', {
         console.error('Failed to check for vehicle updates:', error);
       }
     },
-    async fetchVehicles() {
-      //console.trace('fetchVehicles called by:');
-
+        async fetchVehicles(options = {}) {
       const settingsStore = useSettingsStore();
-      const groupId = settingsStore.selectedGroup;
+      const authStore = useAuthStore();
+      const groupId = settingsStore.selectedGroup || authStore.effectiveCustomerId;
       if (!groupId) return;
 
-      let url = `/vehicles?group=${groupId}`;
-      if (this.lastUpdated) {
-        url += `&since=${this.lastUpdated}`;
-      }
-      
       this.isLoading = true;
       try {
-        const response = await apiClient.get(url);
+        // Create a configuration object for the Axios request
+        const config = {
+          params: {},
+          headers: {}
+        };
+
+        // If a 'since' timestamp exists, add it as a query parameter
+        if (this.lastUpdated) {
+          config.params.since = this.lastUpdated;
+        }
+
+        // If this is a background refresh, add the special header
+        if (options.isBackground) {
+          config.headers['X-Background-Refresh'] = 'true';
+        }
+
+        const response = await apiClient.get('/vehicles', config);
+        
         this.mergeVehicleData(response.data.vehicles);
+        this.groups = response.data.groups || [];
         this.lastUpdated = new Date().toISOString();
+        
       } catch (error) {
         console.error("Failed to fetch vehicles", error);
       } finally {
@@ -126,7 +156,7 @@ export const useVehiclesStore = defineStore('vehicles', {
       this.selectedVehicle = null;
       try {
         // Use a template literal to build the correct URL
-        const response = await axios.get(`/api/vehicles/${id}`);
+        const response = await apiClient.get(`/vehicles/${id}`);
         this.selectedVehicle = response.data;
       } catch (err) {
         this.error = 'Failed to fetch vehicle details.';
@@ -137,10 +167,7 @@ export const useVehiclesStore = defineStore('vehicles', {
     },
     mergeVehicleData(newVehicles) {
       if (!newVehicles || newVehicles.length === 0) return;
-
       const vehicleMap = new Map(this.vehicles.map(v => [v.id, v]));
-
-      // Use an arrow function to preserve 'this' context
       newVehicles.forEach(newVehicle => { 
         const existingVehicle = vehicleMap.get(newVehicle.id);
         if (existingVehicle) {
@@ -155,6 +182,7 @@ export const useVehiclesStore = defineStore('vehicles', {
     // Action to reset the store when the group changes
     resetForNewGroup() {
         this.vehicles = [];
+        this.groups = [];
         this.lastUpdated = null;
     },
 

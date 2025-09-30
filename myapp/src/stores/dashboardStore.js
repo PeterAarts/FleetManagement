@@ -107,14 +107,14 @@ export const useDashboardStore = defineStore('dashboard', {
         this.graphData = apiData.trends || [];
         const stats = apiData.statistics;
         this.statistics = {
-          kpis: {
-            trips: { value: stats.trips.toFixed(1), change: stats.tripsChange },
-            distance: { value: stats.distance.toFixed(0), change: stats.distanceChange },
-            fuelUsed: { value: stats.fuelUsed.toFixed(0), change: stats.fuelUsedChange },
-            fuelUsage: { value: stats.fuelUsage.toFixed(2), change: stats.fuelUsageChange },
-            co2: { value: stats.co2.toFixed(2), change: stats.co2Change },
-            vehiclesActive: { value: stats.vehiclesActive.toFixed(1), change: stats.vehiclesActiveChange }
-          }
+         kpis: {
+          trips: { value: (stats.trips ?? 0).toFixed(1), change: stats.tripsChange },
+          distance: { value: (stats.distance ?? 0).toFixed(0), change: stats.distanceChange },
+          fuelUsed: { value: (stats.fuelUsed ?? 0).toFixed(0), change: stats.fuelUsedChange },
+          fuelUsage: { value: (stats.fuelUsage ?? 0).toFixed(2), change: stats.fuelUsageChange },
+          co2: { value: (stats.co2 ?? 0).toFixed(2), change: stats.co2Change },
+          vehiclesActive: { value: (stats.vehiclesActive ?? 0).toFixed(1), change: stats.vehiclesActiveChange }
+        }
         };
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
