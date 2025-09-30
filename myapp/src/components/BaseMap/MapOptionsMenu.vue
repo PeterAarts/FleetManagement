@@ -5,9 +5,11 @@ import { X } from 'lucide-vue-next';
 defineProps({
   isOpen: { type: Boolean, default: false },
   currentStyle: { type: String, required: true },
+  activeTrip: Object, 
+  isTripsLayerVisible:{ type: Boolean, default: true },
 });
 
-const emit = defineEmits(['close', 'update:style', 'update:traffic']);
+const emit = defineEmits(['close', 'update:style', 'update:traffic','update:trips']);
 
 // --- Local State ---
 const selectedStyle = ref('standard');
@@ -76,9 +78,16 @@ watch(trafficOptions, (newVal) => {
           <input type="checkbox" v-model="trafficOptions.flow" />
           Traffic flow
         </label>
+        <label for="trips-toggle" class="option-label">
+          <input type="checkbox" id="trips-toggle"class="toggle-switch"
+            :checked="isTripsLayerVisible"
+            @change="emit('update:trips', $event.target.checked)"
+          />
+          Trips
+        </label>
       </div>
-    </div>
-    
+
+    </div>    
     <!-- POIs Section  -->
     <div class="section">
       <h4 class="section-title">POINTS OF INTEREST</h4>
@@ -90,6 +99,24 @@ watch(trafficOptions, (newVal) => {
         <label>
           <input type="checkbox" v-model="poiOptions.truckParking" />
           Truck parking
+        </label>
+      </div>
+    </div>
+    <!-- Geofence Section  -->
+    <div class="section">
+      <h5 class="section-title text-primary">PERSONAL GEOFENCES</h5>
+      <div class="checkbox-group">
+        <label>
+          <input type="checkbox" v-model="poiOptions.workshops" />
+          Home dealer
+        </label>
+        <label>
+          <input type="checkbox" v-model="poiOptions.MainCustomer" />
+          Main customer
+        </label>
+        <label>
+          <input type="checkbox" v-model="poiOptions.Emission_Eindhoven" />
+          Emission zone Eindhoven
         </label>
       </div>
     </div>
