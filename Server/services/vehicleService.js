@@ -290,15 +290,20 @@ export class VehicleService {
 
   static async getVehicleTPMSData(vehicleId, customerId) {
     try {
-      // Query TPMS data for both vehicle and trailer
+      // MODIFIED: The query now fetches all required fields from the tpms table
+      // to match the structure of your example JSON.
       const tpmsQuery = `
         SELECT 
+          tpms.id,
           tpms.vin,
           tpms.device,
+          tpms.isVehicle,
+          tpms.isTrailer,
+          tpms.countFrontAxel,
+          tpms.countRearAxel,
           tpms.sensors,
           tpms.lastUpdateDateTime,
-          'vehicle' as source,
-          v.customerVehicleName as name
+          tpms.createdDateTime
         FROM tpms 
         INNER JOIN vehicles v ON v.VIN = tpms.vin 
         WHERE v.id = :vehicleId AND v.cust_id = :customerId
@@ -306,12 +311,16 @@ export class VehicleService {
         UNION ALL
         
         SELECT 
+          tpms.id,
           tpms.vin,
           tpms.device,
+          tpms.isVehicle,
+          tpms.isTrailer,
+          tpms.countFrontAxel,
+          tpms.countRearAxel,
           tpms.sensors,
           tpms.lastUpdateDateTime,
-          'trailer' as source,
-          t.trailerName as name
+          tpms.createdDateTime
         FROM tpms 
         INNER JOIN trailers t ON t.vin = tpms.vin
         INNER JOIN vehicles v ON v.VIN = t.vehicleVIN
@@ -322,60 +331,40 @@ export class VehicleService {
         replacements: { vehicleId, customerId },
         type: db.sequelize.QueryTypes.SELECT
       });
-      
-      const processTPMSData = (tpmsRecord) => {
-        if (!tpmsRecord || !tpmsRecord.sensors) return null;
-        
-        let sensors = [];
+
+      if (!results || results.length === 0) {
+        return []; // Return an empty array if no TPMS data is found
+      }
+
+      // MODIFIED: Process the results into an array of objects,
+      // parsing the 'sensors' JSON string along the way.
+      const processedData = results.map(record => {
+        let parsedSensors = [];
         try {
-          sensors = JSON.parse(tpmsRecord.sensors);
+          // The 'sensors' column in the database is a JSON string
+          if (record.sensors) {
+            parsedSensors = JSON.parse(record.sensors);
+          }
         } catch (error) {
-          console.error('Error parsing TPMS sensors JSON:', error);
-          return null;
+          console.error(`Error parsing sensors JSON for VIN ${record.vin}:`, error);
+          // Leave sensors as an empty array if parsing fails
         }
         
-        // Count issues (alerts)
-        const issues = sensors.filter(sensor => sensor.alert === true).length;
-        
-        // Process tire data for visualization
-        const tireData = sensors.map(sensor => ({
-          axle: sensor.axle,
-          position: sensor.position,
-          pressure: sensor.pressure,
-          temperature: sensor.temperature,
-          sensorId: sensor.sensorid,
-          batteryLevel: sensor.batterylevel,
-          status: sensor.alert ? 'warning' : 'good',
-          lastUpdate: sensor.createdDateTime
-        }));
-        
-        // Sort by axle and position for consistent display
-        tireData.sort((a, b) => {
-          if (a.axle === b.axle) {
-            return a.position - b.position;
-          }
-          return a.axle - b.axle;
-        });
-        
         return {
-          available: true,
-          issues: issues,
-          lastUpdate: tpmsRecord.lastUpdateDateTime,
-          device: tpmsRecord.device,
-          name: tpmsRecord.name,
-          tireData: tireData,
-          sensors: sensors // Raw sensor data if needed
+          id: record.id,
+          vin: record.vin,
+          device: record.device,
+          isTrailer: record.isTrailer,
+          isVehicle: record.isVehicle,
+          countFrontAxel: record.countFrontAxel,
+          countRearAxel: record.countRearAxel,
+          sensors: parsedSensors, // Assign the parsed array of sensor objects
+          lastUpdateDateTime: record.lastUpdateDateTime,
+          createdDateTime: record.createdDateTime,
         };
-      };
+      });
       
-      // Process vehicle and trailer TPMS data
-      const vehicleTPMS = results.find(r => r.source === 'vehicle');
-      const trailerTPMS = results.find(r => r.source === 'trailer');
-      
-      return {
-        vehicle: processTPMSData(vehicleTPMS) || { available: false, issues: 0, tireData: [] },
-        trailer: processTPMSData(trailerTPMS) || { available: false, issues: 0, tireData: [] }
-      };
+      return processedData;
       
     } catch (error) {
       console.error('Error fetching TPMS data:', error);
@@ -429,7 +418,42 @@ export class VehicleService {
     }
   }
 
-static async getVehicleTripsData(vehicleId, customerId, options = {}) {
+  static async getVehicleGeofenceData(vehicleId, customerId) {
+    try {
+      const query = `
+        SELECT
+          gl.id AS eventId,
+          gl.createdDateTime AS eventTimestamp,
+          gl.status AS trigger, -- ALIASED: 'status' from the DB is now 'trigger' in the response
+          gl.alert,
+          gd.name AS geofenceName,
+          gd.id AS geofenceDefId,
+          gr.range
+        FROM geofence_log gl
+          JOIN vehicles v ON v.vin = gl.vin
+          LEFT JOIN geofence_def gd ON gd.id = gl.geofence_id
+          LEFT JOIN geofence_reg gr ON gr.geofence_id = gl.geofence_id AND gr.vin = gl.vin
+        WHERE
+          v.id = :vehicleId AND
+          v.cust_id = :customerId
+        ORDER BY 
+          gl.createdDateTime DESC
+        LIMIT 10;
+      `;
+
+      const geofenceEvents = await db.sequelize.query(query, {
+        replacements: { vehicleId, customerId },
+        type: db.sequelize.QueryTypes.SELECT
+      });
+
+      return geofenceEvents;
+
+    } catch (error) {
+      console.error(`Error fetching geofence event data for vehicle ${vehicleId}:`, error);
+      throw error;
+    }
+  }
+  static async getVehicleTripsData(vehicleId, customerId, options = {}) {
     try {
       const limit = parseInt(options.limit, 10) || 10;
 
@@ -479,8 +503,7 @@ static async getVehicleTripsData(vehicleId, customerId, options = {}) {
       throw error;
     }
   }
-  
- static async getSingleTripDetails(vehicleId, tripId, customerId) {
+  static async getSingleTripDetails(vehicleId, tripId, customerId) {
     try {
       // === Step 1: Securely fetch the trip's summary data ===
       const tripSummaryQuery = `
@@ -539,13 +562,15 @@ static async getVehicleTripsData(vehicleId, customerId, options = {}) {
           createdDateTime AS timestamp,
           triggerType,
           driver1WorkingState,
+          driver2WorkingState, 
+          triggerInfo,  
           wheelBasedSpeed,
           GNSS_latitude AS latitude,
           GNSS_longitude AS longitude,
           tellTale,
           tellTale_State,
-          hrTotalVehicleDistance, -- NEW: Select total vehicle distance
-          TS_PTO_ENABLED,         -- NEW: Select PTO status
+          hrTotalVehicleDistance, 
+          TS_PTO_ENABLED,         
           -- CHANGED: Calculate delay duration in hh:mm format, or return NULL
           CASE 
             WHEN TIMESTAMPDIFF(MINUTE, createdDateTime, receivedDateTime) > 15 
@@ -593,13 +618,12 @@ static async getVehicleTripsData(vehicleId, customerId, options = {}) {
           wheelBasedSpeed: event.wheelBasedSpeed,
           totalDistanceKm: Math.round(event.hrTotalVehicleDistance / 1000),
           ptoActive: Boolean(event.TS_PTO_ENABLED),
-          ...(event.delayDuration && { delay: event.delayDuration }),
-          ...(event.tellTale && {
-            telltale: {
-              name: event.tellTale,
-              state: event.tellTale_State
-            }
-          })
+          driver1WorkingState: event.driver1WorkingState,
+          driver2WorkingState: event.driver2WorkingState,
+          triggerInfo: event.triggerInfo,
+          tellTale: event.tellTale,              // Always include at top level
+          tellTale_State: event.tellTale_State,  // Always include at top level
+          ...(event.delayDuration && { delay: event.delayDuration })
         }))
       };
     } catch (error) {
@@ -608,7 +632,216 @@ static async getVehicleTripsData(vehicleId, customerId, options = {}) {
     }
   }
 
+/**
+   * Fetches all open damage reports for a specific vehicle.
+   * Based on the provided production query.
+   * @param {number} vehicleId - The ID of the vehicle.
+   * @param {number} customerId - The ID of the customer for security scoping.
+   * @returns {Promise<Array>} A promise that resolves to an array of damage objects.
+   */
   static async getVehicleDamageData(vehicleId, customerId) {
-    // Implementation for damage data
+    try {
+      const query = `
+        SELECT
+          p.id,
+          DATE(p.createdDateTime) AS createdDate,
+          TIME(p.createdDateTime) AS createdTime,
+          CONCAT(u.lname, ', ', u.fname) AS registrar,
+          p.severity,
+          CONCAT(c.cat_name, ' / ', IFNULL(sc.subcat_name, '-'), ' / ', di.title) AS description,
+          p.description AS driverDescription,
+          p.repairStatus,
+          di.title AS damage,
+          c.cat_name AS category,
+          sc.subcat_name AS subcategory
+        FROM pdc_damage p
+          LEFT JOIN vehicles v ON v.vin = p.vin
+          LEFT JOIN users u ON u.id = p.UserId
+          LEFT JOIN pdc_damageitems di ON di.ID = p.eventID
+          LEFT JOIN pdc_categories c ON c.ID = di.cat_id
+          LEFT JOIN pdc_subcategories sc ON sc.ID = di.subcat_id
+        WHERE
+          v.id = :vehicleId AND
+          v.cust_id = :customerId AND
+          p.repairStatus = 0 AND
+          c.cat_type_id = 1
+        GROUP BY
+          p.id
+        ORDER BY
+          p.createdDateTime ASC, p.repairStatus ASC;
+      `;
+
+      const damages = await db.sequelize.query(query, {
+        replacements: { vehicleId, customerId },
+        type: db.sequelize.QueryTypes.SELECT
+      });
+
+      return damages;
+
+    } catch (error) {
+      console.error(`Error fetching damage data for vehicle ${vehicleId}:`, error);
+      throw error;
+    }
   }
+  static async getVehicleGeofenceData(vehicleId, customerId) {
+  try {
+    const query = `
+      SELECT
+        gl.id AS eventId,
+        gl.createdDateTime AS eventTimestamp,
+        DATE(gl.createdDateTime) AS date,
+        gl.status AS 'trigger',
+        gl.alert,
+        gd.name AS geofenceName,
+        gd.id AS geofenceDefId,
+        gr.range 
+      FROM geofence_log gl
+        JOIN vehicles v ON v.vin = gl.vin
+        LEFT JOIN geofence_def gd ON gd.id = gl.geofence_id
+        LEFT JOIN geofence_reg gr ON gr.geofence_id = gl.geofence_id AND gr.vin = gl.vin
+      WHERE
+        v.id = :vehicleId AND
+        v.cust_id = :customerId
+      ORDER BY 
+        gl.createdDateTime DESC
+      LIMIT 10;
+    `;
+
+    const geofenceEvents = await db.sequelize.query(query, {
+      replacements: { vehicleId, customerId },
+      type: db.sequelize.QueryTypes.SELECT
+    });
+
+    // Format for frontend
+    return geofenceEvents.map(event => ({
+      id: event.eventId,
+      date: event.date,
+      timestamp: event.eventTimestamp,
+      geofenceName: event.geofenceName,
+      type: event.trigger?.toLowerCase(), // 'enter' or 'exit'
+      alert: event.alert
+    }));
+
+  } catch (error) {
+    console.error(`Error fetching geofence event data for vehicle ${vehicleId}:`, error);
+    throw error;
+  }
+}
+
+  /**
+   * Fetches vehicle status points around a specific geofence LOG event.
+   * (2 before, the breach, 2 after)
+   * @param {number} vehicleId The ID of the vehicle.
+   * @param {number} eventId The ID of the geofence_log event.
+   * @param {number} customerId The ID of the customer for security.
+   * @returns {Promise<Array>} A promise that resolves to an array of vehiclestatus objects.
+   */
+  static async getGeofenceEventDetails(vehicleId, eventId, customerId) {
+  try {
+    const eventQuery = `
+      SELECT 
+        gl.id AS eventId,
+        gl.createdDateTime AS eventTimestamp,
+        gl.latitude AS breachLatitude,
+        gl.longitude AS breachLongitude,
+        gl.status AS eventTrigger,
+        gl.alert,
+        gl.vin,
+        gd.name AS geofenceName,
+        gd.id AS geofenceDefId  -- Return the definition ID
+      FROM geofence_log gl
+        JOIN vehicles v ON v.vin = gl.vin
+        LEFT JOIN geofence_def gd ON gd.id = gl.geofence_id
+      WHERE 
+        gl.id = :eventId AND
+        v.id = :vehicleId AND
+        v.cust_id = :customerId
+      LIMIT 1;
+    `;
+    
+    const event = await db.sequelize.query(eventQuery, {
+      replacements: { eventId, vehicleId, customerId },
+      type: db.sequelize.QueryTypes.SELECT,
+      plain: true
+    });
+
+    if (!event) {
+      return null;
+    }
+
+    // Fetch context points (2 before + breach + 2 after)
+    const contextQuery = `
+      (
+        SELECT
+          createdDateTime,
+          GNSS_latitude AS lat,
+          GNSS_longitude AS lng,
+          wheelBasedSpeed AS speed,
+          'before' AS pointType
+        FROM vehiclestatus
+        WHERE 
+          vin = :vin AND 
+          triggerType = 'timer' AND 
+          createdDateTime < :breachTimestamp
+        ORDER BY createdDateTime DESC
+        LIMIT 2
+      )
+      UNION ALL
+      (
+        SELECT
+          :breachTimestamp AS createdDateTime,
+          :breachLat AS lat,
+          :breachLng AS lng,
+          NULL AS speed,
+          'breach' AS pointType
+      )
+      UNION ALL
+      (
+        SELECT
+          createdDateTime,
+          GNSS_latitude AS lat,
+          GNSS_longitude AS lng,
+          wheelBasedSpeed AS speed,
+          'after' AS pointType
+        FROM vehiclestatus
+        WHERE 
+          vin = :vin AND 
+          triggerType = 'timer' AND 
+          createdDateTime > :breachTimestamp
+        ORDER BY createdDateTime ASC
+        LIMIT 2
+      )
+      ORDER BY createdDateTime ASC;
+    `;
+
+    const contextPoints = await db.sequelize.query(contextQuery, {
+      replacements: {
+        vin: event.vin,
+        breachTimestamp: event.eventTimestamp,
+        breachLat: event.breachLatitude,
+        breachLng: event.breachLongitude
+      },
+      type: db.sequelize.QueryTypes.SELECT
+    });
+
+    return {
+      eventId: event.eventId,
+      geofenceName: event.geofenceName,
+      geofenceDefId: event.geofenceDefId, // Include the definition ID
+      trigger: event.eventTrigger,
+      timestamp: event.eventTimestamp,
+      contextPoints: contextPoints.map(point => ({
+        lat: parseFloat(point.lat),
+        lng: parseFloat(point.lng),
+        timestamp: point.createdDateTime,
+        speed: point.speed,
+        isBreach: point.pointType === 'breach'
+      }))
+    };
+
+  } catch (error) {
+    console.error(`Error fetching geofence event details for event ${eventId}:`, error);
+    throw error;
+  }
+}
 }

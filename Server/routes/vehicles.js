@@ -148,4 +148,59 @@ router.get('/:id/trailer', sessionAuth, async (req, res) => {
   }
 });
 
+router.get('/:id/damage', sessionAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerId = req.user.selectedCustomerId;
+    
+    // Call the new service method to get damage data
+    const damageData = await VehicleService.getVehicleDamageData(id, customerId);
+    
+    // The service returns an array, which could be empty if there are no damages.
+    // This is a valid response, so we send it directly.
+    res.json(damageData);
+
+  } catch (error) {
+    console.error(`Error fetching damage data for vehicle ${req.params.id}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/:id/geofence/events', sessionAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerId = req.user.selectedCustomerId;
+    
+    const geofenceData = await VehicleService.getVehicleGeofenceData(id, customerId);
+    
+    res.json(geofenceData);
+
+  } catch (error) {
+    console.error(`Error fetching geofence data for vehicle ${req.params.id}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+router.get('/:id/geofence/:eventId', sessionAuth, async (req, res) => {
+  try {
+    const { id, eventId } = req.params;
+    const customerId = req.user.selectedCustomerId;
+    
+    const eventDetails = await VehicleService.getGeofenceEventDetails(
+      id, 
+      eventId, 
+      customerId
+    );
+    
+    if (eventDetails) {
+      res.json(eventDetails);
+    } else {
+      res.status(404).json({ message: 'Geofence event not found or access denied' });
+    }
+
+  } catch (error) {
+    console.error(`Error fetching geofence event ${req.params.eventId}:`, error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 export default router;

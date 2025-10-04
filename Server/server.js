@@ -18,6 +18,7 @@ import driverRoutes from './routes/driver.js';
 import trailerRoutes from './routes/trailers.js';
 import sessionRoutes from './routes/session.js';
 import debugRoutes from './routes/debug.js';
+import geofenceRoutes from './routes/geofences.js';
 import { sessionAuth } from './middleware/sessionAuth.js';
 import { trackActivity, checkInactivity, getActivityStatus } from './middleware/activityTracker.js';
 
@@ -211,6 +212,7 @@ async function startServer() {
   app.use('/api/vehicles', protectedMiddleware, vehicleRoutes); 
   app.use('/api/driver', protectedMiddleware,driverRoutes);
   app.use('/api/trailers', protectedMiddleware, trailerRoutes);
+  app.use('/api/geofences', geofenceRoutes);
 
   if (process.env.NODE_ENV === 'development') {
     app.use('/api/debug', debugRoutes);
