@@ -442,4 +442,13 @@ defineExpose({
   border-right: 6px solid transparent;
   border-bottom: 6px solid rgba(var(--color-primary-rgb), 0.9);
 }
+  .leaflet-interactive:focus {
+    outline: none !important;
+  }
+
+  /* ADD THESE RULES to fix the marker panning issue */
+  .leaflet-marker-icon,
+  .leaflet-marker-shadow {
+    position: absolute !important;
+  }
 </style>

@@ -493,13 +493,7 @@ const activeFiltersCount = computed(() => {
 <style scoped>
 /* Custom scrollbar - thin and only visible on hover */
 
-::-webkit-scrollbar           {width: 4px !important;}
-::-webkit-scrollbar-track     {background: transparent !important;}
-::-webkit-scrollbar-thumb     {background-color: transparent !important;border-radius: 3px !important;transition: background-color 0.3s ease !important;}
-:hover::-webkit-scrollbar-thumb 
-                              {background-color: var(--color-primary-300) !important;}
-::-webkit-scrollbar-thumb:hover 
-                              {background-color: var(--color-primary-300)}
+
 .hide                         {display: none; }
 .listedVehicle:hover i        {font-weight: 700 !important;border-radius: var(--radius);}
 .group                        {border-left:2px solid var(--color-primary-400);}

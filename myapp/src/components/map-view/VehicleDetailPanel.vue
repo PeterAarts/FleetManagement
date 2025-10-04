@@ -9,6 +9,7 @@ import TripsInfo from '@/components/vehicle/TripsInfo.vue';
 import DamageInfo from '@/components/vehicle/DamageInfo.vue';
 import TrailerInfo from '@/components/vehicle/TrailerInfo.vue';
 import TPMSInfo from '@/components/vehicle/TPMSInfo.vue';
+import GeofenceInfo from '@/components/vehicle/GeofenceInfo.vue';
 
 const props = defineProps({
   vehicle: Object,
@@ -19,8 +20,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
-
-// Tab state
 const activeTab = ref('vehicle');
 
 // IMPROVED: Global cache that persists across vehicle changes
@@ -46,13 +45,14 @@ const hasDriver = computed(() => driverIds.value.length > 0);
 const availableTabs = computed(() => {
   const vehicleIcon = props.vehicle?.typeIconClass ? `fa-light ${props.vehicle.typeIconClass}` : 'fa-light fa-truck';
   const tabs = [];
-  tabs.push({ id: 'vehicle', label: '', icon: vehicleIcon, show: true }); // Always show Vehicle tab
+  tabs.push({ id: 'vehicle', label: '', icon: vehicleIcon, show: true }); 
   if (hasDriver.value)                {tabs.push({ id: 'driver', label: '', icon: 'fa-light fa-user', show: true });}
-  tabs.push({ id: 'trips', label: '', icon: 'fa-light fa-route', show: true }); // Always show Trips tab
-  if (props.vehicle?.damageCount > 0) { tabs.push({ id: 'damages', label: `(${props.vehicle.damageCount})`, icon: 'fa-light fa-wrench', show: true });}
-  if (props.vehicle?.trailerId)       { tabs.push({ id: 'trailer', label: '', icon: 'fa-light fa-trailer', show: true });}
+  tabs.push({ id: 'trips', label: '', icon: 'fa-light fa-route', show: true }); 
+  if (props.vehicle?.damageCount > 0) {tabs.push({ id: 'damages', label: ``, icon: 'fa-light fa-wrench', show: true });}
+  if (props.vehicle?.trailerId)       {tabs.push({ id: 'trailer', label: '', icon: 'fa-light fa-trailer', show: true });}
   if (props.vehicle?.tpmsVehicle || props.vehicle?.tpmsTrailer) 
-                                      { tabs.push({ id: 'tpms', label: '', icon: 'fa-light fa-tire-pressure-warning', show: true });}
+                                      {tabs.push({ id: 'tpms', label: '', icon: 'fa-light fa-tire-pressure-warning', show: true });}
+  if (props.vehicle?.geofence > 0)    {tabs.push({ id: 'geofence', label: '', icon: 'fa-light fa-draw-polygon', show: true });}                                    
   return tabs.filter(tab => tab.show);
 });
 
@@ -119,15 +119,27 @@ const fetchTripsData = async (vehicleId) => {
     throw error;
   }
 };
-
+const fetchGeofenceData = async (vehicleId) => {
+  const cacheKey = getCacheKey('geofence', vehicleId);
+  const cachedData = getCachedData(cacheKey);
+  if (cachedData) return cachedData;
+  
+  try {
+    const response = await apiClient.get(`/vehicles/${vehicleId}/geofence/events`);
+    const data = response.data;
+    setCachedData(cacheKey, data);
+    return data;
+  } catch (error) {
+    console.error('Error fetching Geofence data:', error);
+    throw error;
+  }
+};
 const fetchDamageData = async (vehicleId) => {
   const cacheKey = getCacheKey('damages', vehicleId);
   const cachedData = getCachedData(cacheKey);
-  
   if (cachedData) {
     return cachedData;
   }
-  
   try {
     const response = await apiClient.get(`/vehicles/${vehicleId}/damage`);    
     const data = response.data;
@@ -138,15 +150,12 @@ const fetchDamageData = async (vehicleId) => {
     throw error;
   }
 };
-
 const fetchTrailerData = async (vehicleId) => {
   const cacheKey = getCacheKey('trailer', vehicleId);
   const cachedData = getCachedData(cacheKey);
-  
   if (cachedData) {
     return cachedData;
   }
-  
   try {
     const response = await apiClient.get(`/vehicles/${vehicleId}/trailer`);    
     const data = response.data;
@@ -157,15 +166,12 @@ const fetchTrailerData = async (vehicleId) => {
     throw error;
   }
 };
-
 const fetchTPMSData = async (vehicleId) => {
   const cacheKey = getCacheKey('tpms', vehicleId);
   const cachedData = getCachedData(cacheKey);
-  
   if (cachedData) {
     return cachedData;
   }
-  
   try {
     const response = await apiClient.get(`/vehicles/${vehicleId}/tpms`);    
     const data = response.data;
@@ -176,15 +182,12 @@ const fetchTPMSData = async (vehicleId) => {
     throw error;
   }
 };
-
 // IMPROVED: Get cached data for current vehicle and tab
 const getCurrentTabData = (tabId) => {
   if (!props.vehicle?.id) return null;
-  
   const cacheKey = getCacheKey(tabId === 'driver' ? 'drivers' : tabId, props.vehicle.id);
   return getCachedData(cacheKey);
 };
-
 // Tab switching with lazy loading
 const switchTab = async (tabId) => {
   if (activeTab.value === tabId) return;
@@ -213,6 +216,11 @@ const switchTab = async (tabId) => {
           await fetchDamageData(props.vehicle.id);
         }
         break;
+      case 'geofence':
+        if (props.vehicle?.geofence > 0) {
+          await fetchGeofenceData(props.vehicle.id);
+        }
+        break;
       case 'trailer':
         if (props.vehicle?.trailerId) {
           await fetchTrailerData(props.vehicle.id);
@@ -238,6 +246,7 @@ watch(() => props.vehicle?.id, (newVehicleId, oldVehicleId) => {
     // Note: We're NOT clearing the cache anymore - it persists across vehicles
   }
 });
+
 </script>
 
 <template>
@@ -294,56 +303,16 @@ watch(() => props.vehicle?.id, (newVehicleId, oldVehicleId) => {
 
       <!-- Driver Tab Content -->
       <div v-else-if="activeTab === 'driver'" class="space-y-4">
-        <div v-if="getCurrentTabData('driver')" >
-          <DriverInfo 
-            v-for="(driver, index) in getCurrentTabData('driver')"
-            :key="driver.id || index"
-            :cached-data="driver"
-            :driver-position="`DRIVER ${index + 1}`"
-          />
-        </div>
-        <div v-else class="text-center text-gray-500 py-8">
-          No detailed driver information available.
-        </div>
+        <div v-if="getCurrentTabData('driver')"><DriverInfo v-for="(driver, index) in getCurrentTabData('driver')":key="driver.id || index":cached-data="driver" :driver-position="`DRIVER ${index + 1}`" /></div>
+        <div v-else class="text-center text-gray-500 py-8">No detailed driver information available.</div>
       </div>
-
-      <!-- Trips Tab Content -->
-      <div v-else-if="activeTab === 'trips'">
-        <TripsInfo 
-          :vehicle-id="vehicle.id"
-          :cached-data="getCurrentTabData('trips')"
-        />
-      </div>
-
-      <!-- Damages Tab Content -->
-      <div v-else-if="activeTab === 'damages'">
-        <DamageInfo 
-          :vehicle-id="vehicle.id"
-          :damage-count="vehicle.damageCount"
-          :cached-data="getCurrentTabData('damages')"
-        />
-      </div>
-
-      <!-- Trailer Tab Content -->
-      <div v-else-if="activeTab === 'trailer'">
-        <TrailerInfo 
-          :vehicle-id="vehicle.id"
-          :trailer-id="vehicle.trailerId"
-          :cached-data="getCurrentTabData('trailer')"
-          layout="card"
-          mode="display"
-        />
-      </div>
-
-      <!-- TPMS Tab Content -->
-      <div v-else-if="activeTab === 'tpms'">
-        <TPMSInfo 
-          :vehicle-id="vehicle.id"
-          :cached-data="getCurrentTabData('tpms')"
-        />
-      </div>
-    </div>
+      <div v-else-if="activeTab === 'trips'">   <TripsInfo    :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('trips')" /></div>
+      <div v-else-if="activeTab === 'damages'"> <DamageInfo   :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('damages')"/></div>
+      <div v-else-if="activeTab === 'trailer'"> <TrailerInfo  :vehicle-id="vehicle.id" :trailer-id="vehicle.trailerId" :cached-data="getCurrentTabData('trailer')" layout="card" mode="display"/></div>
+      <div v-else-if="activeTab === 'tpms'">    <TPMSInfo     :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('tpms')" /></div>
+      <div v-else-if="activeTab === 'geofence'"><GeofenceInfo :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('geofence')" /></div>
   </div>
+</div>
 </template>
 
 <style>

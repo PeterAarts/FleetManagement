@@ -7,9 +7,10 @@ defineProps({
   currentStyle: { type: String, required: true },
   activeTrip: Object, 
   isTripsLayerVisible:{ type: Boolean, default: true },
+  isGeofenceLayerVisible: { type: Boolean, default: true },
 });
 
-const emit = defineEmits(['close', 'update:style', 'update:traffic','update:trips']);
+const emit = defineEmits(['close', 'update:style', 'update:traffic','update:trips','update:geofence']);
 
 // --- Local State ---
 const selectedStyle = ref('standard');
@@ -48,77 +49,81 @@ watch(trafficOptions, (newVal) => {
       <h3>Map options</h3>
       <button @click="emit('close')" class="close-btn"><X :size="20" /></button>
     </div>
-
-    <!-- Map Styles Section -->
+    <div class="menu-content">
     <div class="section">
-      <h4 class="section-title">MAP STYLES</h4>
-      <div class="style-grid">
-        <div 
-          v-for="style in mapStyles" 
-          :key="style.id" 
-          class="style-item"
-          :class="{ 'selected': selectedStyle === style.id }"
-          @click="selectStyle(style.id)"
-        >
-          <img :src="style.image" :alt="style.name" class="style-preview">
-          <span>{{ style.name }}</span>
+        <h4 class="section-title">MAP STYLES</h4>
+        <div class="style-grid">
+          <div 
+            v-for="style in mapStyles" 
+            :key="style.id" 
+            class="style-item"
+            :class="{ 'selected': selectedStyle === style.id }"
+            @click="selectStyle(style.id)"
+          >
+            <img :src="style.image" :alt="style.name" class="style-preview">
+            <span>{{ style.name }}</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Traffic Section -->
-    <div class="section">
-      <h4 class="section-title">TRAFFIC</h4>
-      <div class="checkbox-group">
-        <label>
-          <input type="checkbox" v-model="trafficOptions.incidents" />
-          Traffic incidents
-        </label>
-        <label>
-          <input type="checkbox" v-model="trafficOptions.flow" />
-          Traffic flow
-        </label>
-        <label for="trips-toggle" class="option-label">
-          <input type="checkbox" id="trips-toggle"class="toggle-switch"
-            :checked="isTripsLayerVisible"
-            @change="emit('update:trips', $event.target.checked)"
-          />
-          Trips
-        </label>
-      </div>
+      <div class="section">
+        <h4 class="section-title">TRAFFIC</h4>
+        <div class="checkbox-group">
+          <label>
+            <input type="checkbox" v-model="trafficOptions.incidents" />
+            Traffic incidents
+          </label>
+          <label>
+            <input type="checkbox" v-model="trafficOptions.flow" />
+            Traffic flow
+          </label>
+          <label for="trips-toggle" class="option-label">
+            <input type="checkbox" id="trips-toggle"class="toggle-switch"
+              :checked="isTripsLayerVisible"
+              @change="emit('update:trips', $event.target.checked)"
+            />
+            Trips
+          </label>
+          <label for="geofence-toggle" class="option-label">
+            <input type="checkbox" id="geofence-toggle" class="toggle-switch"
+              :checked="isGeofenceLayerVisible"
+              @change="emit('update:geofence', $event.target.checked)"
+            />
+            Geofence
+          </label>
+        </div>
 
-    </div>    
-    <!-- POIs Section  -->
-    <div class="section">
-      <h4 class="section-title">POINTS OF INTEREST</h4>
-      <div class="checkbox-group">
-        <label>
-          <input type="checkbox" v-model="poiOptions.workshops" />
-          Workshops
-        </label>
-        <label>
-          <input type="checkbox" v-model="poiOptions.truckParking" />
-          Truck parking
-        </label>
+      </div>    
+      <div class="section">
+        <h4 class="section-title">POINTS OF INTEREST</h4>
+        <div class="checkbox-group">
+          <label>
+            <input type="checkbox" v-model="poiOptions.workshops" />
+            Workshops
+          </label>
+          <label>
+            <input type="checkbox" v-model="poiOptions.truckParking" />
+            Truck parking
+          </label>
+        </div>
       </div>
-    </div>
-    <!-- Geofence Section  -->
-    <div class="section">
-      <h5 class="section-title text-primary">PERSONAL GEOFENCES</h5>
-      <div class="checkbox-group">
-        <label>
-          <input type="checkbox" v-model="poiOptions.workshops" />
-          Home dealer
-        </label>
-        <label>
-          <input type="checkbox" v-model="poiOptions.MainCustomer" />
-          Main customer
-        </label>
-        <label>
-          <input type="checkbox" v-model="poiOptions.Emission_Eindhoven" />
-          Emission zone Eindhoven
-        </label>
-      </div>
+      <div class="section">
+        <h5 class="section-title text-primary">PERSONAL GEOFENCES</h5>
+        <div class="checkbox-group">
+          <label>
+            <input type="checkbox" v-model="poiOptions.workshops" />
+            Home dealer
+          </label>
+          <label>
+            <input type="checkbox" v-model="poiOptions.MainCustomer" />
+            Main customer
+          </label>
+          <label>
+            <input type="checkbox" v-model="poiOptions.Emission_Eindhoven" />
+            Emission zone Eindhoven
+          </label>
+        </div>
+      </div>  
     </div>
   </div>
 </template>
@@ -130,9 +135,13 @@ watch(trafficOptions, (newVal) => {
   height: 100%;
   background-color: white;
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  overflow-y: hidden;
   display: flex;
   flex-direction: column;
+}
+.menu-content {
+  flex: 1;
+  overflow-y: auto; /* Scrolling happens here instead */
 }
 .header {
   display: flex;

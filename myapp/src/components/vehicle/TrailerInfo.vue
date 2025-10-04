@@ -25,7 +25,13 @@ const trailer = computed(() => {
   if (!props.cachedData) return null;
   
   const data = props.cachedData;
-  
+  const telematicsData = {
+    BRAND: data.telematicsStatus?.Brand || data.brand,
+    BATTERY: data.telematicsStatus?.Battery ? `${data.telematicsStatus.Battery} %` : null,
+    GPS: data.telematicsStatus?.GPSsignal ? `${data.telematicsStatus.GPSsignal} %` : null,
+    GSM: data.telematicsStatus?.GSMsignal ? `${data.telematicsStatus.GSMsignal} %` : null,
+    UPDATED: data.telematicsStatus?.updated || null,
+  };
   return {
     // Basic info
     name: data.trailerName,
@@ -61,11 +67,9 @@ const trailer = computed(() => {
       ) : {},
     
     // Telematics data
-    telematicsBrand: data.telematicsStatus?.Brand || data.brand,
-    battery: data.telematicsStatus?.Battery ? `${data.telematicsStatus.Battery} %` : null,
-    gps: data.telematicsStatus?.GPSsignal ? `${data.telematicsStatus.GPSsignal} %` : null,
-    gsm: data.telematicsStatus?.GSMsignal ? `${data.telematicsStatus.GSMsignal} %` : null,
-    lastUpdated: data.telematicsStatus?.updated || null,
+    telematics: Object.fromEntries(
+      Object.entries(telematicsData).filter(([_, value]) => value !== null)
+    ),
     
     // Cooling status
     cooling: data.currentCoolingStatus,
@@ -84,12 +88,18 @@ const updateField = (field, value) => {
 // Helper to get temperature status color
 const getTemperatureClass = (temp) => {
   const tempValue = parseFloat(temp);
-  return tempValue > 10 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
+  return tempValue > 10 ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-gray-100 text-gray-900 hover:bg-gray-200';
 };
 
 // Helper to get door status color
 const getDoorClass = (status) => {
-  return status === 'OPEN' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600';
+  return status === 'OPEN' ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-gray-100 text-gray-900 hover:bg-gray-200';
+};
+const getTelematicsClass = (key, value) => {
+  if (key === 'BATTERY' && parseInt(value) < 20) {
+    return 'bg-red-100 text-red-600';
+  }
+  return 'bg-gray-100 text-gray-900 hover:bg-gray-200';
 };
 </script>
 
@@ -102,18 +112,18 @@ const getDoorClass = (status) => {
   <div v-else-if="layout === 'card'" class="space-y-4">
     <!-- Trailer Basic Data -->
     <div class="bg-white rounded-lg p-4 shadow-sm">
-      <h4 class="font-bold text-xs uppercase tracking-wider text-gray-900 mb-4">Trailer Data</h4>
+      <div class="card-title font-medium  uppercase  text-gray-900 mb-4">Trailer Data</div>
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
           <i class="fa-light fa-truck text-gray-400"></i>
-          <span class="text-gray-600">{{ trailer.brand || 'Unknown' }} - {{ trailer.model || 'Unknown' }}</span>
+          <span class="text-gray-900">{{ trailer.brand || 'Unknown' }} - {{ trailer.model || 'Unknown' }}</span>
         </div>
         <div class="flex items-center gap-3">          
-          <span class="text-gray-600">{{ trailer.weight || '-' }} kg</span>
+          <span class="text-gray-900">{{ trailer.weight || '-' }} kg</span>
           <i class="fa-light fa-weight-hanging text-gray-400"></i>
         </div>
       </div>
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <i class="fa-light fa-id-card text-gray-400"></i>
           <span class="text-gray-600">{{ trailer.licensePlate || '-' }}</span>
@@ -127,75 +137,58 @@ const getDoorClass = (status) => {
 
     <!-- Maintenance -->
     <div class="bg-white rounded-lg p-4 shadow-sm">
-      <h4 class="font-bold text-xs uppercase tracking-wider text-gray-900 mb-4">Maintenance</h4>
-      <div class="grid grid-cols-2 gap-4 text-sm">
+      <div class="card-title font-medium uppercase  text-gray-900 mb-4">Maintenance</div>
+      <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <i class="fa-light fa-gauge-simple-high text-gray-400"></i>
-          <span class="text-gray-600">{{ trailer.totalKm || 'N/A' }} km</span>
+          <span class="text-gray-900">{{ trailer.totalKm || 'N/A' }} km</span>
         </div>
         <div class="flex items-center gap-2">
+          <span class="text-gray-900">{{ trailer.serviceDistance || 'N/A' }} km</span>
           <i class="fa-light fa-route text-gray-400"></i>
-          <span class="text-gray-600">{{ trailer.serviceDistance || 'N/A' }} km</span>
         </div>
       </div>
     </div>
 
     <!-- Temperature -->
     <div class="bg-white rounded-lg p-4 shadow-sm" v-if="Object.keys(trailer.temperature).length > 0">
-      <h4 class="font-bold text-xs uppercase tracking-wider text-gray-900 mb-4">Temperature</h4>
+      <h4 class="card-title font-medium uppercase text-gray-900 mb-4">Temperature</h4>
       <div class="flex gap-2">
         <div v-for="(temp, area) in trailer.temperature" :key="area" 
              class="px-3 py-1 rounded text-sm"
              :class="getTemperatureClass(temp)">
           <div class="text-xs text-gray-500 uppercase">{{ area.replace('_', ' ') }}</div>
-          <div class="font-medium">{{ temp }}°</div>
+          <div class="font-medium"><i class="fa-light fa-temperature-full"></i> {{ temp }}°</div>
         </div>
       </div>
     </div>
 
     <!-- Door Control -->
     <div class="bg-white rounded-lg p-4 shadow-sm" v-if="Object.keys(trailer.doors).length > 0">
-      <h4 class="font-bold text-xs uppercase tracking-wider text-gray-600 mb-4">
-        <i class="fa-light fa-door-open mr-2"></i>
-        Door Control
-      </h4>
+      <div class="card-title font-medium uppercase text-gray-900 mb-4">Door Control</div>
       <div class="flex gap-2">
         <div v-for="(status, door) in trailer.doors" :key="door"
              class="px-3 py-1 rounded text-sm"
              :class="getDoorClass(status)">
-          <div class="text-xs text-gray-500 uppercase">{{ door.replace('_', ' ') }}</div>
-          <div class="font-medium">{{ status }}</div>
+          <div class="text-xs text-gray-500 lowercase">{{ door.replace('_', ' ') }}</div>
+          <div class="font-medium text-xs lowercase">{{ status }}</div>
         </div>
       </div>
     </div>
 
     <!-- Telematics Status -->
-    <div class="bg-white rounded-lg p-4 shadow-sm" v-if="trailer.telematicsBrand">
-      <h4 class="font-bold text-xs uppercase tracking-wider text-gray-600 mb-4">Telematics Status</h4>
-      <div class="space-y-2">
-        <div class="flex justify-between">
-          <span class="text-xs text-gray-500 uppercase">Brand</span>
-          <span class="text-sm font-medium">{{ trailer.telematicsBrand }}</span>
-        </div>
-        <div v-if="trailer.battery" class="flex justify-between">
-          <span class="text-xs text-gray-500 uppercase">Battery</span>
-          <span class="text-sm font-medium" 
-                :class="parseInt(trailer.battery) < 20 ? 'text-red-600' : 'text-gray-900'">
-            {{ trailer.battery }}
-            <i v-if="parseInt(trailer.battery) < 20" class="fa-light fa-exclamation-triangle ml-1"></i>
-          </span>
-        </div>
-        <div v-if="trailer.gps" class="flex justify-between">
-          <span class="text-xs text-gray-500 uppercase">GPS</span>
-          <span class="text-sm font-medium">{{ trailer.gps }}</span>
-        </div>
-        <div v-if="trailer.gsm" class="flex justify-between">
-          <span class="text-xs text-gray-500 uppercase">GSM</span>
-          <span class="text-sm font-medium">{{ trailer.gsm }}</span>
-        </div>
-        <div v-if="trailer.lastUpdated" class="flex justify-between">
-          <span class="text-xs text-gray-500 uppercase">Updated</span>
-          <span class="text-sm font-medium">{{ trailer.lastUpdated }}</span>
+    <div class="bg-white rounded-lg p-4 shadow-sm" v-if="Object.keys(trailer.telematics).length > 0">
+      <h4 class="card-title font-medium uppercase text-gray-900 mb-4">Telematics Status</h4>
+      <div class="flex flex-wrap gap-2">
+        <div v-for="(value, key) in trailer.telematics" :key="key"
+            class="px-3 py-1 rounded text-sm"
+            :class="getTelematicsClass(key, value)">
+          <div class="text-xs text-gray-500 lowercase">{{ key }}</div>
+          <div class="font-medium text-xs flex items-center gap-1">
+            <span>{{ value }}</span>
+            <i v-if="key === 'BATTERY' && parseInt(value) < 20" 
+              class="fa-light fa-exclamation-triangle text-red-600"></i>
+          </div>
         </div>
       </div>
     </div>
@@ -204,7 +197,7 @@ const getDoorClass = (status) => {
   <!-- Form Layout (Resources View) -->
   <div v-else-if="layout === 'form'" class="space-y-6">
     <div class="bg-white rounded-lg p-6">
-      <h3 class="font-bold text-sm uppercase tracking-wider text-gray-700 mb-6">Trailer Details</h3>
+      <h3 class="font-bold uppercase  text-gray-700 mb-6">Trailer Details</h3>
       
       <!-- Basic Info Grid -->
       <div class="grid grid-cols-4 gap-6 mb-8">
@@ -297,7 +290,7 @@ const getDoorClass = (status) => {
       <div class="grid grid-cols-3 gap-8 mb-8">
         <!-- Temperature Section -->
         <div class="bg-gray-50 p-4 rounded" v-if="Object.keys(trailer.temperature).length > 0">
-          <h4 class="font-bold text-xs uppercase tracking-wider text-gray-600 mb-3">Temperature</h4>
+          <h4 class="font-bold text-xs uppercase  text-gray-900 mb-3">Temperature</h4>
           <div class="space-y-2">
             <div v-for="(temp, area) in trailer.temperature" :key="area" class="flex justify-between">
               <span class="text-xs text-gray-500 uppercase">{{ area.replace('_', ' ') }}</span>
@@ -311,7 +304,7 @@ const getDoorClass = (status) => {
 
         <!-- Door Control Section -->
         <div class="bg-gray-50 p-4 rounded" v-if="Object.keys(trailer.doors).length > 0">
-          <h4 class="font-bold text-xs uppercase tracking-wider text-gray-600 mb-3">Door Control</h4>
+          <h4 class="font-bold  uppercase  text-gray-900 mb-3">Door Control</h4>
           <div class="space-y-2">
             <div v-for="(status, door) in trailer.doors" :key="door" class="flex justify-between">
               <span class="text-xs text-gray-500 uppercase">{{ door.replace('_', ' ') }}</span>
@@ -325,7 +318,7 @@ const getDoorClass = (status) => {
 
         <!-- Telematics Section -->
         <div class="bg-gray-50 p-4 rounded" v-if="trailer.telematicsBrand">
-          <h4 class="font-bold text-xs uppercase tracking-wider text-gray-600 mb-3">Telematics Status</h4>
+          <h4 class="font-bold uppercase text-gray-900 mb-3">Telematics Status</h4>
           <div class="space-y-2">
             <div class="flex justify-between">
               <span class="text-xs text-gray-500 uppercase">Brand</span>
