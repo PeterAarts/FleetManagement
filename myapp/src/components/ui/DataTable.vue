@@ -1,24 +1,25 @@
 <template>
-  <div class="space-y-4">
+  <div class="card p-4">
     <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
       <div class=" sm:w-1/3">
-        <Input
+       
+      </div>
+      <div class="flex items-center gap-2">
+         <Input
           placeholder="Search all columns..."
           :model-value="searchQuery"
           @update:modelValue="$emit('update:searchQuery', $event)"
           class="w-50"
         />
-      </div>
-      <div class="flex items-center gap-2">
-        <Button variant="outline" @click="exportData('excel')">Excel</Button>
-        <Button variant="outline" @click="exportData('pdf')">PDF</Button>
-        <Button variant="outline" @click="exportData('print')">Print</Button>
+        <Button variant="slate" @click="exportData('excel')"><i class="fa-light fa-file-excel"></i></Button>
+        <Button variant="slate" @click="exportData('pdf')"><i class="fa-light fa-file-pdf"></i></Button>
+        <Button variant="slate" @click="exportData('print')"><i class="fa-light fa-print"></i></Button>
       </div>
     </div>
 
-    <div class="border rounded-lg overflow-x-auto">
-      <table class="min-w-full text-sm text-left light:bg-white ">
-        <thead class="bg-white border-b ">
+    <div class=" rounded-lg overflow-x-auto">
+      <table class="min-w-full text-sm text-left border-b light:bg-white dark:bg-gray-800">
+        <thead class="bg-white border-b text-xs">
           <tr>
             <th
               v-for="col in columns"
@@ -57,19 +58,19 @@
             </tr>
           </template>
           <template v-else>
-            <tr v-for="item in paginatedData" :key="item.id" class="hover:bg-primary/10 dark:hover:bg-gray-200/50 group">
-              <td v-for="col in columns" :key="col.key" class="p-3 whitespace-nowrap">
+            <tr v-for="item in paginatedData" :key="item.id" class="hover:bg-primary dark:hover:bg-gray-200 group">
+              <td v-for="col in columns" :key="col.key" class="p-4 whitespace-nowrap">
                 <slot :name="`cell-${col.key}`" :item="item" :value="getNestedValue(item, col.key)">
                   {{ getNestedValue(item, col.key) }}
                 </slot>
               </td>
               <td v-if="canEdit || canDelete" class="p-3 text-right">
-                <div class="opacity-0 group-hover:opacity-500 transition-opacity flex gap-2 justify-end text-slate-500">
+                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 justify-end text-slate-600">
                   <Button v-if="canEdit" size="sm" variant="ghost" @click="$emit('edit', item)">
                     <SquarePen class="h-4 w-4" />
                   </Button>
                   <Button v-if="canDelete" size="sm" variant="ghost" @click="$emit('delete', item)">
-                    <Trash2Icon class="h-4 w-3" />
+                    <Trash2Icon class="h-4 w-4 " />
                   </Button>
                 </div>
               </td>
@@ -80,10 +81,9 @@
     </div>
 
 <div class="flex items-center justify-between pt-2">
-  <div class="text-sm text-muted-foreground">
+  <div class="text-sm ">
     Showing {{ paginatedData.length }} of {{ filteredData.length }} entries.
   </div>
-
    <Pagination
     v-if="totalPages > 1"
     :total="filteredData.length"
