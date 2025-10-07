@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # The Apache Reverse Proxy service
+  apache:
+    build:
+      context: ./apache-reverse-proxy
+      dockerfile: Dockerfile
+    container_name: apache_proxy
+    ports:
+      - "80:80"
+      - "443:443"  # Expose port 443 for HTTPS
+    volumes:
+      - ./apache-reverse-proxy/your-domain.conf:/etc/apache2/sites-available/your-domain.conf
+      - ./ssl:/etc/ssl/certs  # Mount your certificate files into the container
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+
+  # The frontend service (no public port)
+  frontend:
+    build:
+      context: ./my-app
+      dockerfile: Dockerfile
+    container_name: vue_frontend
+    # No ports here, as it's only accessible from the internal network
+    networks:
+      - app-network
+
+  # The backend service (no public port)
+  backend:
+    build:
+      context: ./Server
+      dockerfile: Dockerfile
+    container_name: node_backend
+    # No ports here, as it's only accessible from the internal network
+    environment:
+      # ... (your database environment variables) ...
+    depends_on:
+      - mariadb
+    networks:
+      - app-network
+
+  # The database service
+  mariadb:
+    # ... (same as before) ...
+
+# Define a network for all services to communicate with each other
+networks:
+  app-network:
+    driver: bridge
+
+# Define the volume to persist database data
+volumes:
+  mariadb_data:
