@@ -49,7 +49,7 @@ const toggleGeofenceOnMap = (eventId) => {
 
 <template>
   <div class="card p-4 rounded-md">
-    <h4 class="font-bold text-md mb-4 px-2">GEOFENCE EVENTS</h4>
+    <h4 class="font-medium uppercasec mb-4 text-gray-900">GEOFENCE EVENTS</h4>
     
     <div v-if="groupedEvents.length > 0">
       <div v-for="group in groupedEvents" :key="group.date" class="timeline-group">

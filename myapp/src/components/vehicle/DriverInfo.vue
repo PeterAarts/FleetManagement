@@ -17,7 +17,7 @@
     
     <!-- Driver Data -->
     <div v-else-if="driverData" class="driver-info-card">
-      <div class="driver-header">{{ driverPosition }}</div>
+      <div class="driver-header font-medium uppercase text-gray-900">{{ driverPosition }}</div>
       
       <div class="driver-details mb-4">
         <div class="driver-name">
@@ -252,8 +252,7 @@ export default {
 
 .driver-header {
   margin: 0 0 15px 0;
-  color: #333;
-  font-weight: 700;
+
   text-transform: uppercase;
 }
 

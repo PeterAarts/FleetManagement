@@ -1,6 +1,6 @@
 <!-- TrailerInfo.vue -->
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   vehicleId: Number,
@@ -20,11 +20,20 @@ const props = defineProps({
 
 const emit = defineEmits(['update:trailer']);
 
-// Transform API data to component-friendly format
+// Create a local, mutable copy of the raw data for edit mode
+const localRawData = ref(props.cachedData);
+
+// Watch for external changes to cachedData and update local copy
+watch(() => props.cachedData, (newVal) => {
+  localRawData.value = newVal;
+}, { immediate: true });
+
+
+// Transform API data to component-friendly format (using localRawData for reactivity)
 const trailer = computed(() => {
-  if (!props.cachedData) return null;
+  if (!localRawData.value) return null;
   
-  const data = props.cachedData;
+  const data = localRawData.value;
   const telematicsData = {
     BRAND: data.telematicsStatus?.Brand || data.brand,
     BATTERY: data.telematicsStatus?.Battery ? `${data.telematicsStatus.Battery} %` : null,
@@ -70,6 +79,11 @@ const trailer = computed(() => {
     telematics: Object.fromEntries(
       Object.entries(telematicsData).filter(([_, value]) => value !== null)
     ),
+    telematicsBrand: telematicsData.BRAND,
+    battery: telematicsData.BATTERY,
+    gps: telematicsData.GPS,
+    gsm: telematicsData.GSM,
+    lastUpdated: telematicsData.UPDATED,
     
     // Cooling status
     cooling: data.currentCoolingStatus,
@@ -79,9 +93,35 @@ const trailer = computed(() => {
   };
 });
 
+// Map computed field names back to raw data field names
+const fieldMap = {
+    'name': 'trailerName',
+    'brand': 'brand',
+    'model': 'model',
+    'vin': 'vin',
+    'licensePlate': 'LicensePlate',
+    'axlesConfig': 'noOfAxles',
+    'serviceDistance': 'serviceDistance',
+    'ambientTemp': 'ambientAirTemperature'
+    // Add more mappings as needed
+};
+
+
 const updateField = (field, value) => {
   if (props.mode === 'edit') {
-    emit('update:trailer', { ...trailer.value, [field]: value });
+    const rawFieldName = fieldMap[field];
+    if (rawFieldName) {
+      // 1. Update the local reactive raw data copy
+      localRawData.value = { 
+        ...localRawData.value, 
+        [rawFieldName]: value 
+      };
+      
+      // 2. Emit the updated raw data object to the parent
+      emit('update:trailer', localRawData.value);
+    } else {
+      console.warn(`Attempted to edit non-mappable field: ${field}`);
+    }
   }
 };
 
@@ -108,11 +148,11 @@ const getTelematicsClass = (key, value) => {
     No trailer data available.
   </div>
 
-  <!-- Card Layout (Map View) -->
-  <div v-else-if="layout === 'card'" class="space-y-4">
+  <!-- Card Layout (Map View) - Locked to one column as requested -->
+  <div v-else-if="layout === 'card'" class="grid grid-cols-1 gap-4">
     <!-- Trailer Basic Data -->
-    <div class="bg-white rounded-lg p-4 shadow-sm">
-      <div class="card-title font-medium  uppercase  text-gray-900 mb-4">Trailer Data</div>
+    <div class="bg-white rounded-lg p-4 shadow-sm col-span-1">
+      <div class="card-title font-medium uppercase text-gray-900 mb-4">Trailer Data</div>
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
           <i class="fa-light fa-truck text-gray-400"></i>
@@ -136,8 +176,8 @@ const getTelematicsClass = (key, value) => {
     </div>
 
     <!-- Maintenance -->
-    <div class="bg-white rounded-lg p-4 shadow-sm">
-      <div class="card-title font-medium uppercase  text-gray-900 mb-4">Maintenance</div>
+    <div class="bg-white rounded-lg p-4 shadow-sm col-span-1 ">
+      <div class="card-title font-medium uppercase text-gray-900 mb-4">Maintenance</div>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <i class="fa-light fa-gauge-simple-high text-gray-400"></i>
@@ -151,9 +191,9 @@ const getTelematicsClass = (key, value) => {
     </div>
 
     <!-- Temperature -->
-    <div class="bg-white rounded-lg p-4 shadow-sm" v-if="Object.keys(trailer.temperature).length > 0">
+    <div class="bg-white rounded-lg p-4 shadow-sm col-span-1" v-if="Object.keys(trailer.temperature).length > 0">
       <h4 class="card-title font-medium uppercase text-gray-900 mb-4">Temperature</h4>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <div v-for="(temp, area) in trailer.temperature" :key="area" 
              class="px-3 py-1 rounded text-sm"
              :class="getTemperatureClass(temp)">
@@ -164,9 +204,9 @@ const getTelematicsClass = (key, value) => {
     </div>
 
     <!-- Door Control -->
-    <div class="bg-white rounded-lg p-4 shadow-sm" v-if="Object.keys(trailer.doors).length > 0">
+    <div class="bg-white rounded-lg p-4 shadow-sm col-span-1" v-if="Object.keys(trailer.doors).length > 0">
       <div class="card-title font-medium uppercase text-gray-900 mb-4">Door Control</div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <div v-for="(status, door) in trailer.doors" :key="door"
              class="px-3 py-1 rounded text-sm"
              :class="getDoorClass(status)">
@@ -177,7 +217,7 @@ const getTelematicsClass = (key, value) => {
     </div>
 
     <!-- Telematics Status -->
-    <div class="bg-white rounded-lg p-4 shadow-sm" v-if="Object.keys(trailer.telematics).length > 0">
+    <div class="bg-white rounded-lg p-4 shadow-sm col-span-1" v-if="Object.keys(trailer.telematics).length > 0">
       <h4 class="card-title font-medium uppercase text-gray-900 mb-4">Telematics Status</h4>
       <div class="flex flex-wrap gap-2">
         <div v-for="(value, key) in trailer.telematics" :key="key"
@@ -194,121 +234,132 @@ const getTelematicsClass = (key, value) => {
     </div>
   </div>
 
-  <!-- Form Layout (Resources View) -->
+  <!-- Form Layout (Resources View & Modal Detail Tab) -->
   <div v-else-if="layout === 'form'" class="space-y-6">
     <div class="bg-white rounded-lg p-6">
       <h3 class="font-bold uppercase  text-gray-700 mb-6">Trailer Details</h3>
       
       <!-- Basic Info Grid -->
-      <div class="grid grid-cols-4 gap-6 mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-4">
+        <!-- Trailer Name -->
         <div>
-          <label class="block text-xs text-gray-500 mb-1">trailer name</label>
+          <label class="block text-xs text-gray-500 mb-1">Trailer Name</label>
           <input 
             v-if="mode === 'edit'"
             :value="trailer.name || ''"
             @input="updateField('name', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <span v-else class="text-sm font-medium text-blue-600">{{ trailer.name || 'N/A' }}</span>
+          <span v-else class="text-sm font-medium text-gray-900 block">{{ trailer.name || 'N/A' }}</span>
         </div>
+        <!-- Brand -->
         <div>
-          <label class="block text-xs text-gray-500 mb-1">brand</label>
+          <label class="block text-xs text-gray-500 mb-1">Brand</label>
           <input 
             v-if="mode === 'edit'"
             :value="trailer.brand || ''"
             @input="updateField('brand', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <span v-else class="text-sm font-medium text-blue-600">{{ trailer.brand || 'N/A' }}</span>
+          <span v-else class="text-sm font-medium text-gray-900 block">{{ trailer.brand || 'N/A' }}</span>
         </div>
+        <!-- Model -->
         <div>
-          <label class="block text-xs text-gray-500 mb-1">model</label>
+          <label class="block text-xs text-gray-500 mb-1">Model</label>
           <input 
             v-if="mode === 'edit'"
             :value="trailer.model || ''"
             @input="updateField('model', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <span v-else class="text-sm font-medium text-blue-600">{{ trailer.model || 'N/A' }}</span>
+          <span v-else class="text-sm font-medium text-gray-900 block">{{ trailer.model || 'N/A' }}</span>
         </div>
+        <!-- VIN -->
         <div>
-          <label class="block text-xs text-gray-500 mb-1">vin</label>
+          <label class="block text-xs text-gray-500 mb-1">VIN</label>
           <input 
             v-if="mode === 'edit'"
             :value="trailer.vin || ''"
             @input="updateField('vin', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <span v-else class="text-sm font-medium text-blue-600">{{ trailer.vin || 'N/A' }}</span>
+          <span v-else class="text-sm font-medium text-gray-900 block">{{ trailer.vin || 'N/A' }}</span>
         </div>
       </div>
 
-      <div class="grid grid-cols-4 gap-6 mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8 border-t pt-8">
+        <!-- License Plate -->
         <div>
-          <label class="block text-xs text-gray-500 mb-1">license plate</label>
+          <label class="block text-xs text-gray-500 mb-1">License Plate</label>
           <input 
             v-if="mode === 'edit'"
             :value="trailer.licensePlate || ''"
             @input="updateField('licensePlate', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <span v-else class="text-sm font-medium text-blue-600">{{ trailer.licensePlate || 'N/A' }}</span>
+          <span v-else class="text-sm font-medium text-gray-900 block">{{ trailer.licensePlate || 'N/A' }}</span>
         </div>
+        <!-- Axles Config -->
         <div>
-          <label class="block text-xs text-gray-500 mb-1">axles configuration</label>
+          <label class="block text-xs text-gray-500 mb-1">Axles Configuration</label>
           <input 
             v-if="mode === 'edit'"
             :value="trailer.axlesConfig || ''"
             @input="updateField('axlesConfig', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <span v-else class="text-sm font-medium text-blue-600">{{ trailer.axlesConfig || 'N/A' }}</span>
+          <span v-else class="text-sm font-medium text-gray-900 block">{{ trailer.axlesConfig || 'N/A' }}</span>
         </div>
+        <!-- Service Distance -->
         <div>
-          <label class="block text-xs text-gray-500 mb-1">service distance</label>
+          <label class="block text-xs text-gray-500 mb-1">Service Distance (km)</label>
           <input 
             v-if="mode === 'edit'"
             :value="trailer.serviceDistance || ''"
             @input="updateField('serviceDistance', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            type="number"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <span v-else class="text-sm font-medium text-blue-600">{{ trailer.serviceDistance || 'N/A' }}</span>
+          <span v-else class="text-sm font-medium text-gray-900 block">{{ trailer.serviceDistance || 'N/A' }} km</span>
         </div>
+        <!-- Ambient Air Temperature -->
         <div>
-          <label class="block text-xs text-gray-500 mb-1">ambient air temperature</label>
+          <label class="block text-xs text-gray-500 mb-1">Ambient Air Temperature (°)</label>
           <input 
             v-if="mode === 'edit'"
             :value="trailer.ambientTemp || ''"
             @input="updateField('ambientTemp', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+            type="number"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <span v-else class="text-sm font-medium text-blue-600">{{ trailer.ambientTemp || 'N/A' }}</span>
+          <span v-else class="text-sm font-medium text-gray-900 block">{{ trailer.ambientTemp || 'N/A' }} °</span>
         </div>
       </div>
 
-      <!-- Temperature, Door Control, Telematics Grid -->
-      <div class="grid grid-cols-3 gap-8 mb-8">
+      <!-- Live Status Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 border-t pt-8">
+        
         <!-- Temperature Section -->
-        <div class="bg-gray-50 p-4 rounded" v-if="Object.keys(trailer.temperature).length > 0">
-          <h4 class="font-bold text-xs uppercase  text-gray-900 mb-3">Temperature</h4>
+        <div class="bg-gray-50 p-4 rounded shadow-inner" v-if="Object.keys(trailer.temperature).length > 0">
+          <h4 class="font-bold text-xs uppercase text-gray-900 mb-3 border-b pb-2">Live Temperature</h4>
           <div class="space-y-2">
-            <div v-for="(temp, area) in trailer.temperature" :key="area" class="flex justify-between">
-              <span class="text-xs text-gray-500 uppercase">{{ area.replace('_', ' ') }}</span>
-              <span class="text-sm font-medium px-2 py-1 rounded"
+            <div v-for="(temp, area) in trailer.temperature" :key="area" class="flex justify-between items-center">
+              <span class="text-sm text-gray-600 uppercase">{{ area.replace('_', ' ') }}</span>
+              <span class="text-sm font-semibold px-3 py-1 rounded-full flex items-center gap-1"
                     :class="getTemperatureClass(temp)">
-                {{ temp }}°
+                <i class="fa-light fa-temperature-full text-xs"></i> {{ temp }}°
               </span>
             </div>
           </div>
         </div>
 
         <!-- Door Control Section -->
-        <div class="bg-gray-50 p-4 rounded" v-if="Object.keys(trailer.doors).length > 0">
-          <h4 class="font-bold  uppercase  text-gray-900 mb-3">Door Control</h4>
+        <div class="bg-gray-50 p-4 rounded shadow-inner" v-if="Object.keys(trailer.doors).length > 0">
+          <h4 class="font-bold uppercase text-gray-900 mb-3 border-b pb-2">Door Control</h4>
           <div class="space-y-2">
-            <div v-for="(status, door) in trailer.doors" :key="door" class="flex justify-between">
-              <span class="text-xs text-gray-500 uppercase">{{ door.replace('_', ' ') }}</span>
-              <span class="text-sm font-medium px-2 py-1 rounded"
+            <div v-for="(status, door) in trailer.doors" :key="door" class="flex justify-between items-center">
+              <span class="text-sm text-gray-600 capitalize">{{ door.replace('_', ' ') }}</span>
+              <span class="text-xs font-semibold px-3 py-1 rounded-full"
                     :class="getDoorClass(status)">
                 {{ status }}
               </span>
@@ -317,31 +368,31 @@ const getTelematicsClass = (key, value) => {
         </div>
 
         <!-- Telematics Section -->
-        <div class="bg-gray-50 p-4 rounded" v-if="trailer.telematicsBrand">
-          <h4 class="font-bold uppercase text-gray-900 mb-3">Telematics Status</h4>
-          <div class="space-y-2">
+        <div class="bg-gray-50 p-4 rounded shadow-inner" v-if="trailer.telematicsBrand">
+          <h4 class="font-bold uppercase text-gray-900 mb-3 border-b pb-2">Telematics Status</h4>
+          <div class="space-y-2 text-sm">
             <div class="flex justify-between">
-              <span class="text-xs text-gray-500 uppercase">Brand</span>
-              <span class="text-sm font-medium">{{ trailer.telematicsBrand }}</span>
+              <span class="text-sm text-gray-600">Brand</span>
+              <span class="font-medium text-gray-900">{{ trailer.telematicsBrand }}</span>
             </div>
             <div v-if="trailer.battery" class="flex justify-between">
-              <span class="text-xs text-gray-500 uppercase">Battery</span>
-              <span class="text-sm font-medium" 
+              <span class="text-sm text-gray-600">Battery</span>
+              <span class="font-medium" 
                     :class="parseInt(trailer.battery) < 20 ? 'text-red-600' : 'text-gray-900'">
                 {{ trailer.battery }}
               </span>
             </div>
             <div v-if="trailer.gps" class="flex justify-between">
-              <span class="text-xs text-gray-500 uppercase">GPS</span>
-              <span class="text-sm font-medium">{{ trailer.gps }}</span>
+              <span class="text-sm text-gray-600">GPS Signal</span>
+              <span class="font-medium text-gray-900">{{ trailer.gps }}</span>
             </div>
             <div v-if="trailer.gsm" class="flex justify-between">
-              <span class="text-xs text-gray-500 uppercase">GSM</span>
-              <span class="text-sm font-medium">{{ trailer.gsm }}</span>
+              <span class="text-sm text-gray-600">GSM Signal</span>
+              <span class="font-medium text-gray-900">{{ trailer.gsm }}</span>
             </div>
             <div v-if="trailer.lastUpdated" class="flex justify-between">
-              <span class="text-xs text-gray-500 uppercase">Updated</span>
-              <span class="text-sm font-medium">{{ trailer.lastUpdated }}</span>
+              <span class="text-sm text-gray-600">Last Updated</span>
+              <span class="font-medium text-gray-900">{{ trailer.lastUpdated }}</span>
             </div>
           </div>
         </div>
@@ -350,10 +401,10 @@ const getTelematicsClass = (key, value) => {
   </div>
 
   <!-- Inline Layout (List items) -->
-  <div v-else-if="layout === 'inline'" class="text-sm">
+  <div v-else-if="layout === 'inline'" class="text-sm p-2 bg-white rounded-lg shadow-xs">
     <div class="flex items-center gap-4">
-      <span class="font-medium">{{ trailer.name || 'Unknown Trailer' }}</span>
-      <span class="text-gray-500">{{ trailer.brand }} {{ trailer.model }}</span>
+      <span class="font-medium text-blue-600">{{ trailer.name || 'Unknown Trailer' }}</span>
+      <span class="text-gray-500 border-l pl-4">{{ trailer.brand }} {{ trailer.model }}</span>
       <span class="text-gray-500">{{ trailer.licensePlate }}</span>
     </div>
   </div>

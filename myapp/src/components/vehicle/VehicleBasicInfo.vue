@@ -31,7 +31,7 @@ const formatDateTime = (dateString) => {
 
 <template>
   <div class="bg-white rounded-lg p-4 shadow-sm">
-    <h4 class="font-bold text-xs uppercase tracking-wider flex items-center mb-4 gap-2 text-gray-900">Vehicle Data</h4>
+    <h4 class="font-medium uppercase flex items-center mb-4 gap-2 text-gray-900">Vehicle Data</h4>
     
     <!-- Main vehicle info row -->
     <div class="flex items-center justify-between mb-2">

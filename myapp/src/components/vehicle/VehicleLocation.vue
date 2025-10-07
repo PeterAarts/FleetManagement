@@ -88,7 +88,7 @@ onMounted(() => {
 
 <template>
   <div class="bg-white rounded-lg p-4 shadow-sm">
-    <h4 class="font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-4 text-gray-900">
+    <h4 class="font-medium uppercase flex items-center gap-2 mb-4 text-gray-900">
       Last Position
     </h4>
     

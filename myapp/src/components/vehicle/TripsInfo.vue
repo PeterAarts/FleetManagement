@@ -41,7 +41,7 @@ const toggleTripOnMap = (tripId) => {
 
 <template>
   <div class="card p-4 rounded-md">
-    <h4 class="font-bold text-md mb-4 px-2">TRIPS</h4>
+    <h4 class="font-medium uppercase text-md mb-4 text-gray-900">TRIPS</h4>
     
     <div v-if="groupedTrips.length > 0">
       <div v-for="group in groupedTrips" :key="group.date" class="timeline-group">

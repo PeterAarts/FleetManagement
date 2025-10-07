@@ -86,7 +86,7 @@ if (!props.cachedData) {
 </script>
 
 <template>
-  <div class="bg-white rounded-lg p-4 shadow-sm">
+  <div class="card rounded-lg p-4 shadow-sm">
     <div class="font-medium uppercase flex items-center mb-4 gap-2 text-gray-900">Vehicle-Check Damages </div>
     
     <div v-if="isLoading" class="flex justify-center items-center h-16">
@@ -101,23 +101,23 @@ if (!props.cachedData) {
       <div v-if="damageData.length === 0" class="bg-gray-100 p-4 rounded text-center text-gray-600">
         No open damage reports found.
       </div>
-      <div v-else class="space-y-3">
+      <div v-else class="">
         <div v-for="damage in damageData" :key="damage.id" 
-             class="p-3 border rounded-lg">
+             class="p-3 border-b hover:bg-secondary-200">
           <div class="flex justify-between items-start">
-            <p class="font-medium text-sm"
+            <p class="font-medium "
                :class="{
                  'text-red-800': damage.severity === 2,
                  'text-yellow-600': damage.severity === 1,
                  'text-gray-800': damage.severity === 0
                }">
                <i class="fa-solid fa-screwdriver-wrench"></i> 
-              {{ damage.damage }} 
+              {{ damage.damage }}
               
             </p>
           </div>
           <div class="flex justify-between items-start mb-2">
-             <p v-if="damage.driverDescription" class="text-xs italic mt-1">
+             <p v-if="damage.driverDescription" class="text-xs mt-1">
               <i class="fa-light fa-user"></i>
               <span> - {{ damage.driverDescription }}</span>
             </p>  
@@ -128,7 +128,7 @@ if (!props.cachedData) {
               {{ damage.category }} / {{ damage.subcategory }}
             </span>
             <span class="flex items-center gap-1">
-              <i class="fa-light fa-clock"></i>
+              <i class="fa-light fa-calendar"></i>
               {{ damage.createdDate }}
             </span>
           </div>
