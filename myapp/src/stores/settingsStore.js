@@ -12,7 +12,7 @@ export const useSettingsStore = defineStore('settings', {
   state: () => ({
     settings: null,
     isLoading: true,
-    paginationLimit: 8,
+    paginationLimit: 10,
     customerGroups: [],
     selectedGroup: null, // Remove localStorage dependency
   }),
@@ -22,6 +22,7 @@ export const useSettingsStore = defineStore('settings', {
     refreshRate: (state) => state.settings?.refresh_rate || 2,
     dashboardRefreshRate: (state) => state.settings?.dashboard_refresh_rate || 15,
     vehiclesRefreshRate: (state) => state.settings?.vehicles_refresh_rate || 1,
+    dashboardStatistics: (state) => state.settings?.daysStatistics || 14,
   },
   
   actions: {

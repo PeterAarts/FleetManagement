@@ -1,4 +1,5 @@
 import { onMounted, onUnmounted, watch, isRef } from 'vue';
+import { Confirm } from 'notiflix';
 
 /**
  * A Vue composable to automatically refresh data at a set interval.
@@ -39,7 +40,7 @@ export function useAutoRefresh(refreshAction, refreshRateInMinutes) {
 
   // ✅ UPDATED: Watch for changes in the refresh rate.
   // If it changes, the 'start' function will be called again to restart the timer.
-  watch(refreshRateInMinutes, start, { immediate: true });
+  watch(() => refreshRateInMinutes, start, { immediate: true });
 
   // The timer is now started by the 'watch' with immediate: true, so onMounted is not needed.
   onUnmounted(stop);

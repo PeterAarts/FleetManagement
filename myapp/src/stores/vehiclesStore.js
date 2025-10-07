@@ -114,7 +114,7 @@ export const useVehiclesStore = defineStore('vehicles', {
         console.error('Failed to check for vehicle updates:', error);
       }
     },
-        async fetchVehicles(options = {}) {
+    async fetchVehicles(options = {}) {
       const settingsStore = useSettingsStore();
       const authStore = useAuthStore();
       const groupId = settingsStore.selectedGroup || authStore.effectiveCustomerId;
@@ -137,10 +137,14 @@ export const useVehiclesStore = defineStore('vehicles', {
         if (options.isBackground) {
           config.headers['X-Background-Refresh'] = 'true';
         }
-
         const response = await apiClient.get('/vehicles', config);
         
-        this.mergeVehicleData(response.data.vehicles);
+        if (!config.params.since) {
+          this.vehicles = response.data.vehicles;
+        } else {
+          // Your merge logic for updates
+          this.mergeVehicleData(response.data.vehicles);
+        }
         this.groups = response.data.groups || [];
         this.lastUpdated = new Date().toISOString();
         
