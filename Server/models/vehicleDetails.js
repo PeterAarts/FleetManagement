@@ -24,6 +24,17 @@ export default function(sequelize) {
     brand:                            { type: DataTypes.STRING },
     cust_id:                          { type: DataTypes.INTEGER },
     customerName:                     { type: DataTypes.STRING },
+    noOfAxles:                        { type: DataTypes.INTEGER },
+    gearboxType:                      { type: DataTypes.STRING },
+    emissionLevel:                    { type: DataTypes.STRING },
+    possibleFuelType:                 { type: DataTypes.STRING },
+    engineTotalFuelUsed:              { type: DataTypes.INTEGER },
+    TotalEngineHours:                 { type: DataTypes.INTEGER },
+    totalFuelTankVolume:              { type: DataTypes.INTEGER },
+    tachographType:                   { type: DataTypes.STRING },
+    engineCoolantTemperature:         { type: DataTypes.INTEGER },
+    vehicleOutofService:              { type: DataTypes.BOOLEAN },
+	  ambientAirTemperature:            { type: DataTypes.INTEGER },
 
     // --- Driver Fields ---
     driver1TachoId:                   { type: DataTypes.STRING },

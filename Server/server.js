@@ -19,6 +19,8 @@ import trailerRoutes from './routes/trailers.js';
 import sessionRoutes from './routes/session.js';
 import debugRoutes from './routes/debug.js';
 import geofenceRoutes from './routes/geofences.js';
+import formbuilderRoutes from './routes/formbuilder.js';
+
 import { sessionAuth } from './middleware/sessionAuth.js';
 import { trackActivity, checkInactivity, getActivityStatus } from './middleware/activityTracker.js';
 
@@ -213,6 +215,7 @@ async function startServer() {
   app.use('/api/driver', protectedMiddleware,driverRoutes);
   app.use('/api/trailers', protectedMiddleware, trailerRoutes);
   app.use('/api/geofences', geofenceRoutes);
+  app.use('/api/formbuilder', protectedMiddleware, formbuilderRoutes);
 
   if (process.env.NODE_ENV === 'development') {
     app.use('/api/debug', debugRoutes);

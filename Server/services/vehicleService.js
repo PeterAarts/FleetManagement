@@ -24,7 +24,80 @@ const checkTelltaleWarning = (vehicle, speedingThreshold = 90) => {
     });
     return warningCount;
 };
+/**
+ * Calculates warning messages for a vehicle based on dates and levels
+ * @param {object} vehicle - The vehicle data object
+ * @returns {string} HTML string of warnings or empty string
+ */
+const calculateWarnings = (vehicle) => {
+  const warnings = [];
+  const currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+  
+  const threeMonthsLater = new Date();
+  threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+  threeMonthsLater.setHours(23, 59, 59, 999);
+  
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
 
+  // MOT/Service date check
+  if (vehicle.nextServiceDate) {
+    try {
+      const validityDate = new Date(vehicle.nextServiceDate);
+      validityDate.setHours(0, 0, 0, 0);
+      
+      if (validityDate < currentDate) {
+        warnings.push(`<li><STRONG>Your MOT IS EXPIRED </STRONG>(expired on ${validityDate.toISOString().split('T')[0]})</li>`);
+      } else if (validityDate <= threeMonthsLater) {
+        warnings.push(`<li>Your vehicle is due MOT within 3 months (on ${validityDate.toISOString().split('T')[0]})</li>`);
+      }
+    } catch (e) {
+      console.error('Error parsing MOT date:', e);
+    }
+  }
+
+  // Tachograph date check
+  if (vehicle.tachographRevokeDate) {
+    try {
+      const tachoDate = new Date(vehicle.tachographRevokeDate);
+      tachoDate.setHours(0, 0, 0, 0);
+      
+      if (tachoDate < currentDate) {
+        warnings.push(`<li><strong>Your TACHOGRAPH is no longer VALID for use, calibration is EXPIRED</strong> (expired on ${tachoDate.toISOString().split('T')[0]})</li>`);
+      } else if (tachoDate <= threeMonthsLater) {
+        warnings.push(`<li>Your Tachograph calibration will expire within 3 months (on ${tachoDate.toISOString().split('T')[0]})</li>`);
+      }
+    } catch (e) {
+      console.error('Error parsing tachograph date:', e);
+    }
+  }
+
+  // Last activity check
+  if (vehicle.lastActivity) {
+    try {
+      const lastActivityDate = new Date(vehicle.lastActivity);
+      if (lastActivityDate < sixMonthsAgo) {
+        warnings.push(`<li>Last vehicle activity was more than 6 months ago (on ${lastActivityDate.toISOString().split('T')[0]})</li>`);
+      }
+    } catch (e) {
+      console.error('Error parsing last activity date:', e);
+    }
+  }
+
+  // Fuel level check
+  if (vehicle.fuelLevel != null && vehicle.fuelLevel < 2) {
+    warnings.push(`<li>Fuel level too low at ${vehicle.fuelLevel}%</li>`);
+  }
+
+  // AdBlue level check
+  if (vehicle.catalystFuelLevel != null && vehicle.catalystFuelLevel < 2) {
+    warnings.push(`<li>AdBlue level too low at ${vehicle.catalystFuelLevel}%</li>`);
+  }
+
+  return warnings.length > 0 ? `<ul>${warnings.join('')}</ul>` : '';
+};
 /**
  * Formats a time string (e.g., "08:30:00") into "8h 30m".
  * @param {string} timeString - The time string from the database.
@@ -167,24 +240,61 @@ const transformVehicleData = (vehicleData, speedingThreshold, memberOfGroupName 
       telltales.push({ [field]: vehicleData[field] });
     }
   }
+console.log('possibleFuelType raw value:', vehicleData.possibleFuelType);
+  console.log('possibleFuelType type:', typeof vehicleData.possibleFuelType);
+  
+  // Parse possibleFuelType from JSON string
+  let fuelTypes = [];
+  let fuelTypeDisplay = '';
+  
+  if (vehicleData.possibleFuelType) {
+    try {
+      console.log('Attempting to parse:', vehicleData.possibleFuelType);
+      
+      // It's stored as a JSON string: "[\"DIESEL\"]"
+      const parsed = JSON.parse(vehicleData.possibleFuelType);
+      console.log('Parsed result:', parsed);
+      
+      if (Array.isArray(parsed)) {
+        fuelTypes = parsed;
+        fuelTypeDisplay = parsed.join(', '); // "DIESEL" or "DIESEL, ELECTRIC"
+        console.log('Final display:', fuelTypeDisplay);
+      }
+    } catch (e) {
+      console.error('Error parsing possibleFuelType:', e);
+      fuelTypeDisplay = vehicleData.possibleFuelType; // Fallback to raw string
+    }
+  } else {
+    console.log('possibleFuelType is null/undefined');
+  }
 
   return {
     id: vehicleData.id,
     VIN: vehicleData.VIN,
     customerVehicleName: vehicleData.customerVehicleName,
+    
+    // Primary fields (camelCase)
     licensePlate: vehicleData.licensePlate,
+    odoMeter: vehicleData.odoMeter,
+    fuelLevel: vehicleData.fuelLevel,
+    catalystFuelLevel: vehicleData.catalystFuelLevel,
+    
+    // Case aliases (PascalCase) for backward compatibility
+    LicensePlate: vehicleData.licensePlate,
+    OdoMeter: vehicleData.odoMeter,
+    FuelLevel: vehicleData.fuelLevel,
+    CatalystFuelLevel: vehicleData.catalystFuelLevel,
+    
     status: calculateStatus(vehicleData, speedingThreshold),
     type: vehicleData.type,
     brand: vehicleData.brand,
+    model: vehicleData.model,
     typeIconClass: vehicleData.typeIconText,
     typeIconCode: vehicleData.typeIconCode,
     currentSpeed: vehicleData.currentSpeed,
-    odoMeter: vehicleData.odoMeter,
-    serviceDistance: vehicleData.serviceDistance,
+    serviceDistance: vehicleData.serviceDistance/1000,
     lastActivity: vehicleData.lastActivity,
     tripActive: vehicleData.tripActive,
-    fuelLevel: vehicleData.fuelLevel,
-    catalystFuelLevel: vehicleData.catalystFuelLevel,
     grossCombinationVehicleWeight: vehicleData.grossCombinationVehicleWeight,
     customerName: vehicleData.customerName,
     telltaleFields: vehicleData.telltaleFields,
@@ -195,7 +305,30 @@ const transformVehicleData = (vehicleData, speedingThreshold, memberOfGroupName 
     newVehicle: vehicleData.newVehicle,
     totDistanceToday: vehicleData.totDistanceToday,
     totFuelUsedToday: vehicleData.totFuelUsedToday,
-    memberOf: memberOfGroupName, // Add group membership (group name)
+    memberOf: memberOfGroupName,
+    
+    // Additional fields from database (may be null)
+    vehicleOutofService: vehicleData.vehicleOutofService,
+    totalFuelTankVolume: vehicleData.totalFuelTankVolume,
+    noOfAxles: vehicleData.noOfAxles,
+    tachographType: vehicleData.tachographType,
+    possibleFuelType: fuelTypeDisplay,
+    emissionLevel: vehicleData.emissionLevel,
+    productionDate: vehicleData.productionDate,
+    gearboxType: vehicleData.gearboxType,
+    engineTotalFuelUsed: vehicleData.engineTotalFuelUsed/1000,
+    TotalEngineHours: vehicleData.TotalEngineHours,
+    ambientAirTemperature: vehicleData.ambientAirTemperature,
+    engineCoolantTemperature: vehicleData.engineCoolantTemperature,
+    serviceBrakeAirPressureCircuit1: vehicleData.serviceBrakeAirPressureCircuit1,
+    serviceBrakeAirPressureCircuit2: vehicleData.serviceBrakeAirPressureCircuit2,
+    
+    // Computed fields
+    brandModel: vehicleData.brand && vehicleData.model ? `${vehicleData.brand} ${vehicleData.model}` : vehicleData.brand || null,
+    brakeAirPressure: vehicleData.serviceBrakeAirPressureCircuit1 && vehicleData.serviceBrakeAirPressureCircuit2 
+      ? `${vehicleData.serviceBrakeAirPressureCircuit1}/${vehicleData.serviceBrakeAirPressureCircuit2}` 
+      : null,
+    
     location: {
       latitude: vehicleData.last_Latitude,
       longitude: vehicleData.last_Longitude,
@@ -288,6 +421,66 @@ export class VehicleService {
     return transformVehicleData(vehicleDetails, speedingThreshold, memberOfGroupName);
   }
 
+  static async getVehicleDetailsWithForm(id, customerId) {
+  try {
+    // Get vehicle details
+    const vehicleData = await this.getSingleVehicleDetails(id, customerId);
+    
+    if (!vehicleData) {
+      return null;
+    }
+
+    // Fetch MOT and tachograph dates for warning calculation
+    const datesQuery = `
+      SELECT 
+        mr.next_service_date as nextServiceDate,
+        mr.tachograph_revoke_date as tachographRevokeDate
+      FROM MOT_REGISTER mr
+      INNER JOIN vehicles v ON v.VIN = mr.vehicle
+      WHERE v.id = :vehicleId AND v.cust_id = :customerId
+      LIMIT 1
+    `;
+
+    const dates = await db.sequelize.query(datesQuery, {
+      replacements: { vehicleId: id, customerId },
+      type: db.sequelize.QueryTypes.SELECT,
+      plain: true
+    });
+
+    // Add dates to vehicle data for warning calculation
+    if (dates) {
+      vehicleData.nextServiceDate = dates.nextServiceDate;
+      vehicleData.tachographRevokeDate = dates.tachographRevokeDate;
+    }
+
+    // Calculate and add warning field
+    vehicleData.warning = calculateWarnings(vehicleData);
+
+    // Fetch formBuild definition
+    const formBuildQuery = `
+      SELECT 
+        id, \`table\`, form, field, label, \`column\`, columnSize, row, sequence,
+        \`group\`, type, size, height, pattern, value, editable, icon, accessLevel
+      FROM formbuilder
+      WHERE \`table\` = 'vehicles'
+      ORDER BY \`column\` ASC, row ASC, sequence ASC
+    `;
+
+    const formBuild = await db.sequelize.query(formBuildQuery, {
+      type: db.sequelize.QueryTypes.SELECT
+    });
+
+    return {
+      data: vehicleData,
+      formBuild: formBuild || []
+    };
+
+  } catch (error) {
+    console.error('Error fetching vehicle details with form:', error);
+    throw error;
+  }
+}
+  
   static async getVehicleTPMSData(vehicleId, customerId) {
     try {
       // MODIFIED: The query now fetches all required fields from the tpms table

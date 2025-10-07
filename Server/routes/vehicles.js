@@ -32,19 +32,103 @@ router.get('/', sessionAuth, async (req, res) => {
 router.get('/:id', sessionAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const vehicle = await VehicleService.getSingleVehicleDetails(
-      id, 
-      req.user.selectedCustomerId
-    );
     
-    if (vehicle) {
-      res.status(200).json(vehicle);
+    // Check if request is for edit modal (wants formBuild)
+    const includeForm = req.query.includeForm === 'true' || req.headers['x-include-form'];
+    
+    if (includeForm) {
+      // Return vehicle data + formBuild (for edit modal)
+      const result = await VehicleService.getVehicleDetailsWithForm(
+        id, 
+        req.user.selectedCustomerId
+      );
+      
+      if (result) {
+        res.status(200).json(result); // { data: {...}, formBuild: [...] }
+      } else {
+        res.status(404).json({ message: `Vehicle with ID ${id} not found.` });
+      }
     } else {
-      res.status(404).json({ message: `Vehicle with ID ${id} not found.` });
+      // Return just vehicle data (for detail view)
+      const vehicle = await VehicleService.getSingleVehicleDetails(
+        id, 
+        req.user.selectedCustomerId
+      );
+      
+      if (vehicle) {
+        res.status(200).json(vehicle);
+      } else {
+        res.status(404).json({ message: `Vehicle with ID ${id} not found.` });
+      }
     }
   } catch (error) {
     console.error(`Error fetching details for ID ${req.params.id}:`, error);
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// NEW: Update vehicle (for form edits)
+router.put('/:id', sessionAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedData = req.body;
+    const customerId = req.user.selectedCustomerId;
+
+    // Validate ID matches
+    if (updatedData.id && updatedData.id != id) {
+      return res.status(400).json({ message: 'ID mismatch' });
+    }
+
+    // Get editable fields from formbuilder
+    const editableFieldsQuery = `
+      SELECT field
+      FROM formbuilder
+      WHERE \`table\` = 'vehicles' AND editable = 1
+    `;
+
+    const editableFields = await db.sequelize.query(editableFieldsQuery, {
+      type: db.sequelize.QueryTypes.SELECT
+    });
+
+    const allowedFields = editableFields.map(f => f.field);
+
+    // Build update object with only editable fields
+    const updateFields = {};
+    Object.keys(updatedData).forEach(key => {
+      if (allowedFields.includes(key) && key !== 'id') {
+        updateFields[key] = updatedData[key];
+      }
+    });
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: 'No editable fields provided' });
+    }
+
+    // Build and execute UPDATE query
+    const setClause = Object.keys(updateFields)
+      .map(field => `\`${field}\` = :${field}`)
+      .join(', ');
+
+    const updateQuery = `
+      UPDATE vehicles
+      SET ${setClause}
+      WHERE id = :id AND cust_id = :customerId
+    `;
+
+    await db.sequelize.query(updateQuery, {
+      replacements: { ...updateFields, id, customerId },
+      type: db.sequelize.QueryTypes.UPDATE
+    });
+
+    res.json({ 
+      success: true,
+      message: 'Vehicle updated successfully',
+      data: { id, ...updateFields }
+    });
+
+  } catch (error) {
+    console.error('Error updating vehicle:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
