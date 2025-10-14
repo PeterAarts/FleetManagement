@@ -1,13 +1,16 @@
+// ============================================
+// FILE: src/composables/useAutoRefresh.js (FIXED)
+// ============================================
 import { onMounted, onUnmounted, watch, isRef } from 'vue';
-import { Confirm } from 'notiflix';
 
 /**
  * A Vue composable to automatically refresh data at a set interval.
  * It is now reactive to changes in the refresh rate.
  * @param {Function} refreshAction The function to call to refresh the data.
  * @param {Number|Ref} refreshRateInMinutes The interval in minutes, can be a number or a Vue ref.
+ * @param {Boolean} callImmediately Whether to call refreshAction immediately on start (default: true for backward compatibility)
  */
-export function useAutoRefresh(refreshAction, refreshRateInMinutes) {
+export function useAutoRefresh(refreshAction, refreshRateInMinutes, callImmediately = true) {
   let timer = null;
 
   const start = () => {
@@ -15,7 +18,7 @@ export function useAutoRefresh(refreshAction, refreshRateInMinutes) {
       clearInterval(timer); // Clear any existing timer before starting a new one
     }
 
-    // ✅ UPDATED: Unwrap the value if it's a ref, otherwise use it directly.
+    // Unwrap the value if it's a ref, otherwise use it directly.
     const rate = isRef(refreshRateInMinutes) ? refreshRateInMinutes.value : refreshRateInMinutes;
     
     if (!rate || rate <= 0) {
@@ -24,10 +27,13 @@ export function useAutoRefresh(refreshAction, refreshRateInMinutes) {
     }
     
     const intervalMs = rate * 60 * 1000;
-    //console.log(`Auto-refresh enabled for this view every ${rate} minute(s).`);
+    console.log(`Auto-refresh enabled: every ${rate} minute(s)${callImmediately ? ' (immediate call)' : ''}`);
 
-    // Fetch immediately on start, then set the interval
-    refreshAction();
+    // Only fetch immediately if callImmediately is true
+    if (callImmediately) {
+      refreshAction();
+    }
+    
     timer = setInterval(refreshAction, intervalMs);
   };
 
@@ -35,14 +41,14 @@ export function useAutoRefresh(refreshAction, refreshRateInMinutes) {
     if (timer) {
       console.log('Auto-refresh stopped for this view.');
       clearInterval(timer);
+      timer = null;
     }
   };
 
-  // ✅ UPDATED: Watch for changes in the refresh rate.
+  // Watch for changes in the refresh rate.
   // If it changes, the 'start' function will be called again to restart the timer.
   watch(() => refreshRateInMinutes, start, { immediate: true });
 
-  // The timer is now started by the 'watch' with immediate: true, so onMounted is not needed.
   onUnmounted(stop);
 
   return { stop };
