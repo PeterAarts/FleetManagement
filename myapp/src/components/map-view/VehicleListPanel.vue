@@ -123,12 +123,19 @@ const filteredVehicles = computed(() => {
     const hasActiveFilter = Object.values(filters.statuses).some(v => v);
     if (!hasActiveFilter) return false;
     
+    if (vehicle.customerVehicleName === 'FRENCHDEMO_401') {
+      console.log('Stopped vehicle status:', vehicle.status);
+      console.log('Filters.statuses.stopped:', filters.statuses.stopped);
+    }
     // Check vehicle against active filters
     let matchesAnyFilter = false;
     
     if (filters.statuses.driving && vehicle.status?.driving) matchesAnyFilter = true;
     if (filters.statuses.idle && (vehicle.status?.idle || vehicle.status?.paused)) matchesAnyFilter = true;
-    if (filters.statuses.stopped && vehicle.status?.stopped) matchesAnyFilter = true;
+    
+    // FIX: Check for stopped status - this should match your getVehicleStatusIcon logic
+    if (filters.statuses.stopped && (vehicle.status?.stopped || vehicle.status?.rest)) matchesAnyFilter = true;
+    
     if (filters.statuses.rest && vehicle.status?.rest) matchesAnyFilter = true;
     if (filters.statuses.alert && (vehicle.status?.alert || vehicle.status?.error)) matchesAnyFilter = true;
     if (filters.statuses.noLocation && (!vehicle.location?.latitude || !vehicle.location?.longitude)) matchesAnyFilter = true;
@@ -205,22 +212,21 @@ function resetFilters() {
 
 // Helper function for status icons
 function getVehicleStatusIcon(vehicle) {
-  if (!vehicle.status) return { icon: 'fa-light fa-stop', color: 'text-gray-400' };
+  if (!vehicle.status) return { icon: 'fa-light fa-stop', color: 'text-gray-500' };
   
   if (vehicle.status.alert || vehicle.status.error) {
     return { icon: 'fa-light fa-triangle-exclamation', color: 'text-red-500' };
   }
   if (vehicle.status.driving) {
-    return { icon: 'fa-light fa-play', color: 'text-gray-400' };
+    return { icon: 'fa-light fa-play', color: 'text-gray-500' };
   }
   if (vehicle.status.paused || vehicle.status.work) {
-    return { icon: 'fa-light fa-pause', color: 'text-gray-400' };
+    return { icon: 'fa-light fa-pause', color: 'text-gray-500' };
   }
   if (vehicle.status.stopped || vehicle.status.rest) {
-    return { icon: 'fa-light fa-stop', color: 'text-gray-400' };
+    return { icon: 'fa-light fa-stop', color: 'text-gray-500' };
   }
-  
-  return { icon: 'fa-light fa-stop', color: 'text-gray-400' };
+  return { icon: 'fa-light fa-stop', color: 'text-gray-500' };
 }
 
 function hasDamage(vehicle) {
@@ -427,7 +433,7 @@ const activeFiltersCount = computed(() => {
     </div>
 
     <!-- Scrollable content area -->
-    <div class="flex-1 overflow-y-auto min-h-0">
+    <div class="flex-1 overflow-y-auto pr-1 min-h-0">
       <!-- Vehicle List -->
       <div class="bg-body">
         <!-- No vehicles message -->
@@ -459,8 +465,8 @@ const activeFiltersCount = computed(() => {
             <div
               v-for="vehicle in vehicleList"
               :key="vehicle.id"
-              class="flex items-center px-4 py-3 cursor-pointer hover:bg-secondary-300 listedVehicle"
-              :class="{ 'bg-secondary-100 ': vehicle.id === selectedVehicleId }"
+              class="flex items-center px-4 py-3 cursor-pointer rounded-r-lg hover:bg-secondary-300  listedVehicle"
+              :class="{ 'bg-secondary-100 selected': vehicle.id === selectedVehicleId }"
               @click="emit('vehicle-selected', vehicle)"
             >
               <div class="flex items-center justify-center w-5 h-5">
@@ -476,9 +482,9 @@ const activeFiltersCount = computed(() => {
               <div class="flex-grow min-w-0 ml-2">
                 <div class="font-medium text-gray-900  truncate">
                   {{ vehicle.customerVehicleName }} 
-                  <span class="text-gray-400 text-sm font-normal">({{ vehicle.licensePlate || 'No license plate' }})</span>
+                  <span class="text-gray-400  font-normal">({{ vehicle.licensePlate || 'No license plate' }})</span>
                 </div>
-                <div class="text-xs text-gray-500 truncate mt-0.5">
+                <div class="text-gray-500 truncate mt-0.5">
                   {{ vehicle.drivers?.[0]?.driverName || 'No driver assigned' }}
                 </div>
               </div>
@@ -496,6 +502,7 @@ const activeFiltersCount = computed(() => {
 
 .hide                         {display: none; }
 .listedVehicle:hover i        {font-weight: 700 !important;border-radius: var(--radius);}
+.listedVehicle.selected       {border-left: 2px solid var(--color-secondary-500);background-color: var(--color-secondary-200);color:white}
 .group                        {border-left:2px solid var(--color-primary-400);}
 .group + div .listedVehicle   {border-left:2px solid var(--color-primary-300);margin-top:0;}
 

@@ -273,10 +273,10 @@ watch(() => props.vehicle?.id, (newVehicleId, oldVehicleId) => {
         v-for="tab in availableTabs" 
         :key="tab.id"
         @click="switchTab(tab.id)"
-        class="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative rounded-top whitespace-nowrap"
+        class="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative rounded-top whitespace-nowrap mr-1 rounded-t-lg"
         :class="activeTab === tab.id 
-          ? 'text-primary-500 border-b-2 border-primary-500  hover:bg-primary-100' 
-          : 'text-gray-500 hover:text-primary hover:bg-primary-100'"
+          ? 'text-primary-500 border-b-2 border-primary-500 bg-white rounded-top-left hover:bg-secondary-200' 
+          : 'text-gray-500 hover:text-primary hover:bg-secondary-200'"
       >
         <i :class="[tab.icon, { 'font-bold': activeTab === tab.id }]"></i>
         {{ tab.label }}
@@ -303,14 +303,14 @@ watch(() => props.vehicle?.id, (newVehicleId, oldVehicleId) => {
 
       <!-- Driver Tab Content -->
       <div v-else-if="activeTab === 'driver'" class="space-y-4">
-        <div v-if="getCurrentTabData('driver')"><DriverInfo v-for="(driver, index) in getCurrentTabData('driver')":key="driver.id || index":cached-data="driver" :driver-position="`DRIVER ${index + 1}`" /></div>
+        <div v-if="getCurrentTabData('driver')"><DriverInfo v-for="(driver, index) in getCurrentTabData('driver')":key="driver.id || index":cached-data="driver" :driver-position="`DRIVER ${index + 1}`" layout="card"/></div>
         <div v-else class="text-center text-gray-500 py-8">No detailed driver information available.</div>
       </div>
-      <div v-else-if="activeTab === 'trips'">   <TripsInfo    :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('trips')" /></div>
-      <div v-else-if="activeTab === 'damages'"> <DamageInfo   :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('damages')"/></div>
+      <div v-else-if="activeTab === 'trips'">   <TripsInfo    :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('trips')" layout="card"/></div>
+      <div v-else-if="activeTab === 'damages'"> <DamageInfo   :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('damages')" layout="card"/></div>
       <div v-else-if="activeTab === 'trailer'"> <TrailerInfo  :vehicle-id="vehicle.id" :trailer-id="vehicle.trailerId" :cached-data="getCurrentTabData('trailer')" layout="card" mode="display"/></div>
-      <div v-else-if="activeTab === 'tpms'">    <TPMSInfo     :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('tpms')" /></div>
-      <div v-else-if="activeTab === 'geofence'"><GeofenceInfo :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('geofence')" /></div>
+      <div v-else-if="activeTab === 'tpms'">    <TPMSInfo     :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('tpms')" layout="card" /></div>
+      <div v-else-if="activeTab === 'geofence'"><GeofenceInfo :vehicle-id="vehicle.id" :cached-data="getCurrentTabData('geofence')" layout="card"/></div>
   </div>
 </div>
 </template>

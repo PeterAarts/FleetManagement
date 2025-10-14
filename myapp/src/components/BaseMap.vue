@@ -30,8 +30,8 @@ let currentMarkers = new Map(); // Store marker references for selection styling
 // --- Custom Marker Icons (Unchanged) ---
 const markerIcons = {
   driving: L.AwesomeMarkers.icon({ icon: "truck", markerColor: "driving", iconSize: [26, 26], iconAnchor: [13, 13], prefix: 'fa',shadowSize: [0, 0]}),
-  paused:  L.AwesomeMarkers.icon({ icon: "pause", markerColor: "paused", iconSize: [26, 26], iconAnchor: [13, 13], prefix: 'fa',shadowSize: [0, 0]}),
-  stopped: L.AwesomeMarkers.icon({ icon: "stop", markerColor: "stopped", iconSize: [26, 26],iconAnchor: [13, 13], prefix: 'fa',shadowSize: [0, 0]}),
+  paused:  L.AwesomeMarkers.icon({ icon: "pause", markerColor: "paused",  iconSize: [26, 26], iconAnchor: [13, 13], prefix: 'fa',shadowSize: [0, 0]}),
+  stopped: L.AwesomeMarkers.icon({ icon: "stop",  markerColor: "stopped", iconSize: [26, 26], iconAnchor: [13, 13], prefix: 'fa',shadowSize: [0, 0]}),
   delayed: L.AwesomeMarkers.icon({ icon: "clock-rotate-left", markerColor: "delayed", iconSize: [26, 26], iconAnchor: [13, 13],prefix: 'fa',shadowSize: [0, 0]}),
   error:   L.AwesomeMarkers.icon({ icon: "triangle-exclamation", markerColor: "orange", iconSize: [26, 26], iconAnchor: [13, 13], prefix: 'fa',shadowSize: [0, 0]}),
   alert:   L.AwesomeMarkers.icon({ icon: "exclamation", markerColor: "delayed", iconSize: [26, 26], iconAnchor: [13, 13], prefix: 'fa',shadowSize: [0, 0]}),
@@ -54,7 +54,7 @@ const zoomToLocation = (lat, lng, zoomLevel = 16) => {
 
 function getMarkerIcon(statusObject) {
   if (!statusObject || typeof statusObject !== 'object' || Object.keys(statusObject).length === 0) return markerIcons.unknown;
-  const priorityOrder = ['alert', 'error', 'driving', 'paused', 'delayed', 'stopped'];
+  const priorityOrder = ['alert', 'error', 'driving', 'paused', 'stopped', 'delayed'];
   for (const status of priorityOrder) {
     if (statusObject[status]) return markerIcons[status];
   }

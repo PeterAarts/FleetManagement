@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/tooltip'
 
 const props = defineProps({
-  icon:     {type: Object,required: true},
+  icon:     {type: [Object , Function],required: true},
   value:    {type: [String, Number],required: true},
   tooltip:  {type: String,    required: true}
 });

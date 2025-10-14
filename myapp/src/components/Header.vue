@@ -39,13 +39,18 @@ const authStore = useAuthStore();
 const settingsStore = useSettingsStore();
 const router = useRouter();
 
-const { selectedGroup, groups } = storeToRefs(settingsStore);
+const { selectedGroup, customerGroups  } = storeToRefs(settingsStore);
 const { username } = storeToRefs(authStore);
 const isMobileMenuOpen = ref(false);
 const expandedMobileMenus = ref({});
 
 // Track current route for active state
 const currentRoute = computed(() => router.currentRoute.value.path);
+const selectedGroupDisplay = computed(() => {
+  if (!selectedGroup.value || !customerGroups.value) return 'Select a customer';
+  const group = customerGroups.value.find(g => g.id === selectedGroup.value);
+  return group ? group.name : 'Select a customer';
+});
 
 const mainNavItems = [
   { label: 'Map', to: '/map' },
@@ -169,12 +174,12 @@ onUnmounted(() => {
                   <NavigationMenuContent>
                     <div v-if="item.isMegaMenu" class="grid w-[600px] grid-cols-3 gap-x-8 p-4">
                       <div v-for="col in item.columns" :key="col.title">
-                        <h3 v-if="col.title" class="mb-2 font-bold text-gray-500">{{ col.title }}</h3>
+                        <h3 v-if="col.title" class=" font-bold text-gray-500">{{ col.title }}</h3>
                         <ul>
                           <li v-for="subItem in col.items" :key="subItem.title">
                             <router-link 
                               :to="subItem.to || '#'" 
-                              class="block select-none rounded-md p-2 leading-none no-underline outline-none transition-colors hover:bg-accent"
+                              class="block select-none rounded-md p-2 leading-none no-underline outline-none transition-colors hover:bg-primary"
                             >
                               {{ subItem.title }}
                             </router-link>
@@ -195,27 +200,28 @@ onUnmounted(() => {
           <div class="hidden lg:flex items-center gap-4">
             <!-- Group Selector -->
             <Select 
-              v-if="settingsStore.customerGroups.length > 0" 
-              :model-value="settingsStore.selectedGroup"
+              v-if="customerGroups.length > 0" 
+              :model-value="selectedGroup?.toString()"
               @update:modelValue="handleGroupChange"
-            >  <i class="fa-light fa-building-magnifying-glass"></i>
-              <SelectTrigger class="w-[180px] xl:w-[220px] card ">
-               
-                <SelectValue placeholder="Select a group" />
+            ><i class="fa-light fa-building-magnifying-glass"></i>
+              <SelectTrigger class="w-[180px] xl:w-[220px] card">
+                <SelectValue>
+                  {{ selectedGroupDisplay }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   <SelectItem 
-                    v-for="group in settingsStore.customerGroups" 
+                    v-for="group in customerGroups" 
                     :key="group.id" 
-                    :value="group.id"
-                    class ="cursor-pointer hover:bg-slate-200 rounded-md"
+                    :value="group.id.toString()"
+                    class="cursor-pointer hover:bg-slate-200 rounded-md"
                   >
                     {{ group.name }}
                   </SelectItem>
                 </SelectGroup>
               </SelectContent>
-            </Select>
+            </Select>            
             
             <!-- Notification icons -->
             <Button variant="ghost" size="icon" class="relative h-9 w-9">
