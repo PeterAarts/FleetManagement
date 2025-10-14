@@ -25,7 +25,7 @@ const parseTimeToMinutes = (timeString) => {
 export const useVehiclesStore = defineStore('vehicles', {
   state: () => ({
     vehicles: [],
-    groups: [], // Add groups array to store
+    groups: [],
     isLoading: false,
     lastUpdated: null,
   }),
@@ -37,21 +37,18 @@ export const useVehiclesStore = defineStore('vehicles', {
     vehiclesByGroup(state) {
       return state.vehicles.reduce((acc, vehicle) => {
         const groupName = vehicle.memberOf || 'Uncategorized';
-        // If the group doesn't exist in the accumulator, create it
         if (!acc[groupName]) {
           acc[groupName] = [];
         }
-        // Push the vehicle into its group
         acc[groupName].push(vehicle);
         return acc;
-      }, {}); // Start with an empty object
+      }, {});
     },
     
     vehicleAnalytics(state) {
       const settingsStore = useSettingsStore();
       const speedingThreshold = settingsStore.settings?.speedingThreshold || 95;
 
-      // Initialize the structure with default zero values
       const analytics = {
         driverStatus: { active: 0, idle: 0, offline: 0 },
         fleetDiagnostics: {
@@ -68,7 +65,6 @@ export const useVehiclesStore = defineStore('vehicles', {
         return analytics;
       }
 
-      // Process all analytics in a single, efficient loop
       for (const v of state.vehicles) {
         // Driver Status
         if (v.tripActive) analytics.driverStatus.active++;
@@ -103,7 +99,6 @@ export const useVehiclesStore = defineStore('vehicles', {
         const response = await apiClient.get(`/vehicles/latest-activity?group=${groupId}`);
         const latestServerTimestamp = response.data.latestActivity;
 
-        // Only fetch the full list if the server has newer data
         if (latestServerTimestamp && new Date(latestServerTimestamp) > new Date(this.lastUpdated)) {
           console.log('New vehicle activity detected. Fetching updates...');
           await this.fetchVehicles();
@@ -114,6 +109,7 @@ export const useVehiclesStore = defineStore('vehicles', {
         console.error('Failed to check for vehicle updates:', error);
       }
     },
+    
     async fetchVehicles(options = {}) {
       const settingsStore = useSettingsStore();
       const authStore = useAuthStore();
@@ -122,29 +118,29 @@ export const useVehiclesStore = defineStore('vehicles', {
 
       this.isLoading = true;
       try {
-        // Create a configuration object for the Axios request
         const config = {
           params: {},
           headers: {}
         };
 
-        // If a 'since' timestamp exists, add it as a query parameter
         if (this.lastUpdated) {
           config.params.since = this.lastUpdated;
         }
 
-        // If this is a background refresh, add the special header
         if (options.isBackground) {
           config.headers['X-Background-Refresh'] = 'true';
         }
+        
         const response = await apiClient.get('/vehicles', config);
         
         if (!config.params.since) {
-          this.vehicles = response.data.vehicles;
+          // Full refresh - replace all vehicles
+          this.vehicles = response.data.vehicles || [];
         } else {
-          // Your merge logic for updates
+          // Incremental update - merge changes
           this.mergeVehicleData(response.data.vehicles);
         }
+        
         this.groups = response.data.groups || [];
         this.lastUpdated = new Date().toISOString();
         
@@ -154,12 +150,12 @@ export const useVehiclesStore = defineStore('vehicles', {
         this.isLoading = false;
       }
     },
+    
     async fetchVehicleDetails(id) {
       this.isLoading = true;
       this.error = null;
       this.selectedVehicle = null;
       try {
-        // Use a template literal to build the correct URL
         const response = await apiClient.get(`/vehicles/${id}`);
         this.selectedVehicle = response.data;
       } catch (err) {
@@ -169,27 +165,40 @@ export const useVehiclesStore = defineStore('vehicles', {
         this.isLoading = false;
       }
     },
+    
     mergeVehicleData(newVehicles) {
       if (!newVehicles || newVehicles.length === 0) return;
+      
       const vehicleMap = new Map(this.vehicles.map(v => [v.id, v]));
+      
       newVehicles.forEach(newVehicle => { 
         const existingVehicle = vehicleMap.get(newVehicle.id);
+        
         if (existingVehicle) {
-          Object.assign(existingVehicle, newVehicle);
+          // Deep merge to preserve nested structures like drivers array
+          Object.keys(newVehicle).forEach(key => {
+            if (Array.isArray(newVehicle[key])) {
+              // For arrays (like drivers), replace entirely to ensure fresh data
+              existingVehicle[key] = [...newVehicle[key]];
+            } else if (typeof newVehicle[key] === 'object' && newVehicle[key] !== null) {
+              // For objects (like status, location), merge properties
+              existingVehicle[key] = { ...existingVehicle[key], ...newVehicle[key] };
+            } else {
+              // For primitives, simply assign
+              existingVehicle[key] = newVehicle[key];
+            }
+          });
         } else {
-          // Now 'this' correctly refers to the store
-          this.vehicles.push(newVehicle); 
+          // New vehicle - add to the array
+          this.vehicles.push(newVehicle);
         }
       });
     },
 
-    // Action to reset the store when the group changes
     resetForNewGroup() {
-        this.vehicles = [];
-        this.groups = [];
-        this.lastUpdated = null;
+      this.vehicles = [];
+      this.groups = [];
+      this.lastUpdated = null;
     },
-
   },
-
 });

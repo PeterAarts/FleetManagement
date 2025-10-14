@@ -1,4 +1,10 @@
 // FILE: main.ts (Corrected)
+console.clear();
+
+// Optional: Add a clean startup message
+console.log('%c🚛 Fleet Management System', 'color: #3b82f6; font-size: 20px; font-weight: bold;');
+console.log('%cVersion 1.0.0', 'color: #6b7280; font-size: 12px;');
+console.log('%c─────────────────────────────', 'color: #e5e7eb;');
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

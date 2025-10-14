@@ -101,7 +101,7 @@ export const useDashboardStore = defineStore('dashboard', {
       if (!groupId) return;
       this.isLoading = true;
       try {
-        const params = new URLSearchParams({ group: groupId, days: days });
+        const params = new URLSearchParams({ days: days });
         const response = await apiClient.get(`/dashboard?${params.toString()}`);
         const apiData = response.data;
         this.graphData = apiData.trends || [];

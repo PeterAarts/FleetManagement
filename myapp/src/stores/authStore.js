@@ -1,9 +1,8 @@
 // ============================================
-// FILE: src/stores/authStore.js (COMPLETE AND FIXED)
+// FILE: src/stores/authStore.js (FIXED IMPORTS)
 // ============================================
 import { defineStore } from 'pinia';
 import apiClient from '@/tools/apiClient';
-import { resetAllStores } from '@/tools/pinia';
 import router from '@/router';
 
 export const useAuthStore = defineStore('auth', {
@@ -23,7 +22,7 @@ export const useAuthStore = defineStore('auth', {
       if (!state.user?.exp) return false;
       const expirationTime = state.user.exp * 1000;
       const currentTime = Date.now();
-      const bufferTime = 60 * 1000; // 1 minute buffer
+      const bufferTime = 60 * 1000;
       return currentTime >= (expirationTime - bufferTime);
     },
     tokenExpiresInMinutes: (state) => {
@@ -36,10 +35,20 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    resetAllApplicationState() {
+      // Import stores dynamically to avoid circular dependencies
+      import('./vehiclesStore').then(({ useVehiclesStore }) => useVehiclesStore().$reset());
+      import('./dashboardStore').then(({ useDashboardStore }) => useDashboardStore().$reset());
+      import('./settingsStore').then(({ useSettingsStore }) => useSettingsStore().$reset());
+      import('./tripsStore').then(({ useTripsStore }) => useTripsStore().$reset());
+      import('./geofenceStore').then(({ useGeofenceStore }) => useGeofenceStore().reset());
+      
+      this.clearAuthData();
+      console.log('✓ All application state reset');
+    },
+
     async login(credentials) {
       try {
-        // Use the custom 'skipAuth' flag to prevent the interceptor
-        // from sending an expired token with the login request.
         const response = await apiClient.post('/auth/login', credentials, {
           skipAuth: true
         });
@@ -60,6 +69,7 @@ export const useAuthStore = defineStore('auth', {
         const { default: activityMonitor } = await import('@/tools/activityMonitor');
         activityMonitor.init(this.user);
 
+        console.log('✓ Login successful:', this.user.username);
         return response.data;
       } catch (error) {
         console.error('Login failed:', error);
@@ -76,24 +86,13 @@ export const useAuthStore = defineStore('auth', {
       }
 
       try {
-        // Only call server logout for manual logouts, not for expired tokens
         if (reason === 'manual') {
           await apiClient.post('/auth/logout');
         }
       } catch (error) {
         console.error('Logout error:', error);
       } finally {
-        this.clearAuthData();
-
-        // Create a query object to pass to the router
-        const query = {};
-        if (reason === 'expired') {
-          query.reason = 'session-expired';
-        } else if (reason === 'invalid') {
-          query.reason = 'invalid-token';
-        }
-        
-        resetAllStores();
+        this.resetAllApplicationState();
         router.push({
           name: 'auth',
           query: reason === 'expired' ? { reason: 'session-expired' } : {}
@@ -110,22 +109,13 @@ export const useAuthStore = defineStore('auth', {
     },
 
     startTokenExpirationCheck() {
-      // Clear any existing interval
       this.stopTokenExpirationCheck();
-
-      // Check token expiration every minute
       this.tokenCheckInterval = setInterval(() => {
         if (this.isTokenExpired) {
-          console.warn('Token has expired, logging out...');
+          console.warn('Token expired, logging out...');
           this.logout('expired');
-        } else {
-          // Optional: Log remaining time for debugging
-          const remainingMinutes = this.tokenExpiresInMinutes;
-          if (remainingMinutes <= 5 && remainingMinutes > 0) {
-            console.warn(`Token expires in ${remainingMinutes} minutes`);
-          }
         }
-      }, 60000); // Check every minute
+      }, 60000);
     },
 
     stopTokenExpirationCheck() {
@@ -133,14 +123,6 @@ export const useAuthStore = defineStore('auth', {
         clearInterval(this.tokenCheckInterval);
         this.tokenCheckInterval = null;
       }
-    },
-
-    checkTokenExpiration() {
-      if (this.isTokenExpired) {
-        this.logout('expired');
-        return false;
-      }
-      return true;
     },
 
     async fetchSessionInfo() {
@@ -160,13 +142,6 @@ export const useAuthStore = defineStore('auth', {
       try {
         const response = await apiClient.put('/session/customer', { customerId });
         this.selectedCustomerId = response.data.selectedCustomerId;
-
-        if (response.data.user) {
-          this.user = { ...this.user, ...response.data.user };
-          const { default: activityMonitor } = await import('@/tools/activityMonitor');
-          activityMonitor.init(this.user); // Reinitialize with updated user data
-        }
-
         return response.data;
       } catch (error) {
         console.error('Failed to switch customer:', error);
@@ -178,21 +153,16 @@ export const useAuthStore = defineStore('auth', {
       if (this.token && !this.user) {
         this.user = this.decodeToken(this.token);
 
-        // Check if token is expired before proceeding
         if (this.isTokenExpired) {
-          console.warn('Stored token is expired, clearing auth data');
+          console.warn('Stored token expired, clearing');
           this.clearAuthData();
           return;
         }
 
-        // Start token monitoring for auto-login
         this.startTokenExpirationCheck();
-
         import('@/tools/activityMonitor').then(({ default: activityMonitor }) => {
           activityMonitor.init(this.user);
         });
-
-        // Fetch session info on auto-login
         this.fetchSessionInfo();
       }
     },

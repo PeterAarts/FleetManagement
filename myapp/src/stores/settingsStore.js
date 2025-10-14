@@ -1,24 +1,32 @@
 // ============================================
-// FILE: src/stores/settingsStore.js (UPDATE EXISTING)
+// FILE: src/stores/settingsStore.js (FIXED - BACKWARD COMPATIBLE)
 // ============================================
 import { defineStore } from 'pinia';
 import apiClient from '@/tools/apiClient';
 import { useVehiclesStore } from './vehiclesStore';
 import { useDashboardStore } from './dashboardStore';
 import { useAuthStore } from './authStore';
-import { nextTick } from 'vue';
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
+    // Keep original naming - settings (not domainSettings)
     settings: null,
-    isLoading: true,
-    paginationLimit: 10,
+    
+    // Customer context
     customerGroups: [],
-    selectedGroup: null, // Remove localStorage dependency
+    selectedGroup: null,
+    
+    isLoading: false,
+    paginationLimit: 10,
   }),
   
   getters: {
+    // All existing getters work as before
     siteName: (state) => state.settings?.site_name || 'Fleet Management',
+    siteDescription: (state) => state.settings?.site_description || '',
+    siteDomain: (state) => state.settings?.domain || '',
+    cssStyle: (state) => state.settings?.style_css || 'blue.css',
+    cssMenu: (state) => state.settings?.style_menu || 'fullscreen_menu.css',
     refreshRate: (state) => state.settings?.refresh_rate || 2,
     dashboardRefreshRate: (state) => state.settings?.dashboard_refresh_rate || 15,
     vehiclesRefreshRate: (state) => state.settings?.vehicles_refresh_rate || 1,
@@ -26,85 +34,113 @@ export const useSettingsStore = defineStore('settings', {
   },
   
   actions: {
+    /**
+     * Fetch settings - called ONCE after login
+     * Gets both domain settings and customer context
+     */
     async fetchSettings() {
       this.isLoading = true;
       try {
-        const oldSelectedGroup = this.selectedGroup;
-        const response = await apiClient.get('/settings');
-        this.settings = response.data.settings;
-        this.customerGroups = response.data.groups || [];
+        const domainResponse = await apiClient.get('/settings/domain');
+        this.settings = domainResponse.data.settings;
+        console.log('✓ Domain settings loaded.');
         
-        // Get selectedCustomerId from server response
-        const selectedCustomerId = response.data.selectedCustomerId;
-        const selectedGroupStillExists = this.customerGroups.some(g => g.id === oldSelectedGroup);
+        const contextResponse = await apiClient.get('/settings/customer-context');
+        this.customerGroups = contextResponse.data.groups || [];
 
-        if (!selectedGroupStillExists) {
-          // If not, reset to the user's primary group to avoid errors
-          this.selectedGroup = response.data.selectedCustomerId;
-          console.warn('Previously selected group no longer exists. Resetting to primary group.');
-        }
-        //  Update auth store with server session data
+        // =================================================================
+        // START: FIX FOR DATA TYPE MISMATCH
+        // =================================================================
+        // Ensure the ID from the API is parsed into a number.
+        const selectedId = contextResponse.data.selectedCustomerId;
+        this.selectedGroup = selectedId ? parseInt(selectedId, 10) : null;
+        // =================================================================
+        // END: FIX FOR DATA TYPE MISMATCH
+        // =================================================================
+        
         const authStore = useAuthStore();
-        if (selectedCustomerId) {
-          authStore.selectedCustomerId = selectedCustomerId;
+        if (this.selectedGroup) {
+          authStore.selectedCustomerId = this.selectedGroup;
         }
         
-        // Set selectedGroup from server session
-        this.selectedGroup = selectedCustomerId || this.settings?.customer_id;
+        console.log('✓ Customer context loaded:', { selectedGroup: this.selectedGroup });
         
       } catch (error) {
         console.error('Failed to fetch settings:', error);
+        throw error;
       } finally {
         this.isLoading = false;
       }
     },
-    async setCustomerGroups(groups) {
-      this.customerGroups = groups || [];
+    
+    /**
+     * Refresh customer context only
+     * Used by auto-refresh to check for new customer grants
+     */
+    async refreshCustomerContext() {
+      try {
+        const response = await apiClient.get('/settings/customer-context');
+        
+        const newGroups = response.data.groups || [];
+        const hadAccessBefore = this.customerGroups.length;
+        const hasAccessNow = newGroups.length;
+        
+        this.customerGroups = newGroups;
+        
+        // Log if access changed
+        if (hasAccessNow > hadAccessBefore) {
+          console.log('✓ New customer access granted:', hasAccessNow - hadAccessBefore, 'new customers');
+        } else if (hasAccessNow < hadAccessBefore) {
+          console.warn('⚠ Customer access revoked:', hadAccessBefore - hasAccessNow, 'customers removed');
+        }
+        
+      } catch (error) {
+        console.error('Failed to refresh customer context:', error);
+      }
     },
+    
+    /**
+     * Switch between customers
+     * Does NOT reload settings - only reloads customer data
+     */
     async setSelectedGroup(groupId) {
-      if (this.selectedGroup === groupId) return;
+      // Ensure the incoming groupId is also treated as a number
+      const numericGroupId = parseInt(groupId, 10);
+
+      if (this.selectedGroup === numericGroupId) {
+        return;
+      }
       
       const authStore = useAuthStore();
       
       try {
-        // >>> CHANGE: Update server session
-        await authStore.switchCustomer(groupId);
+        await authStore.switchCustomer(numericGroupId);
+        this.selectedGroup = numericGroupId;
         
-        this.selectedGroup = groupId;
-        
-        // Reset and refetch data for the new customer
         const vehiclesStore = useVehiclesStore();
         const dashboardStore = useDashboardStore();
         
+        // Reset stores and fetch new data
         vehiclesStore.resetForNewGroup();
         dashboardStore.resetForNewGroup();
         
         await Promise.all([
           vehiclesStore.fetchVehicles(),
-         //dashboardStore.fetchDashboardData()
+          dashboardStore.fetchDashboardData()
         ]);
+        
+        console.log(`✓ Switched to customer: ${numericGroupId}`);
+        
       } catch (error) {
-        console.error('Failed to switch customer:', error);
+        console.error(`✗ Failed to switch to customer ${numericGroupId}:`, error);
         // Revert on error
         this.selectedGroup = authStore.effectiveCustomerId;
-        throw error; // Re-throw for the component to handle
+        throw error;
       }
     },
     
-    // NEW: Handle customer switch from auth store
-    async handleCustomerSwitch(customerId) {
-      this.selectedGroup = customerId;
-      
-      const vehiclesStore = useVehiclesStore();
-      const dashboardStore = useDashboardStore();
-      
-      vehiclesStore.resetForNewGroup();
-      dashboardStore.resetForNewGroup();
-      
-      await Promise.all([
-        vehiclesStore.fetchVehicles(),
-        dashboardStore.fetchDashboardData()
-      ]);
+    setCustomerGroups(groups) {
+      this.customerGroups = groups || [];
     },
     
     clearSettings() {

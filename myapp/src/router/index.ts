@@ -8,7 +8,8 @@ import AuthView from '@/views/AuthView.vue';
 import DashboardView from '@/views/DashboardView.vue';
 import VehiclesView from '@/views/VehiclesView.vue';
 import MapView from '@/views/MapView.vue';
-import DebugView from '@/views/DebugView.vue'
+import DebugView from '@/views/DebugView.vue';
+import NotFound from '@/views/NotFound.vue';
 
 const routes = [
   // This route is for unauthenticated users
@@ -27,14 +28,22 @@ const routes = [
     redirect: '/dashboard', 
     meta: { requiresAuth: true }, // Protects the layout and all its children
     children: [
-      { path: 'dashboard',    name: 'dashboard',    component: DashboardView,},
-      { path: 'map',          name: 'map',          component: MapView, },
-      { path: 'vehicles',     name: 'vehicles',     component: VehiclesView,},
+      { path: 'dashboard',    name: 'dashboard',    component: DashboardView },
+      { path: 'map',          name: 'map',          component: MapView },
+      { path: 'vehicles',     name: 'vehicles',     component: VehiclesView },
       { path: 'trailers',     name: 'trailers',     component: { template: '<div>Trailers Page</div>' }},
       { path: 'drivers',      name: 'drivers',      component: { template: '<div>Drivers Page</div>' }},
-      { path: '/debug/token', name: 'TokenDebug',   component: () => import('@/views/TokenDebug.vue'),meta: { requiresAuth: false }},
-      { path: '/debug',       name: 'debug',        component: DebugView }
+      { path: 'debug/token',  name: 'TokenDebug',   component: () => import('@/views/TokenDebug.vue'), meta: { requiresAuth: false }},
+      { path: 'debug',        name: 'debug',        component: DebugView },
     ]
+  },
+  
+  // 404 catch-all route - MUST BE LAST and OUTSIDE the MainLayout
+  // This catches ALL unmatched routes at the root level
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFound
   }
 ];
 
@@ -44,11 +53,14 @@ const router = createRouter({
 });
 
 // --- GLOBAL NAVIGATION GUARD ---
-// This function runs before every single route change
-// In router/index.ts - fix the beforeEach guard
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   const settingsStore = useSettingsStore();
+
+  // Allow 404 page without authentication
+  if (to.name === 'NotFound') {
+    return next();
+  }
 
   // Prevent infinite loops - if already going to auth page, don't redirect again
   if (to.name === 'auth') {
@@ -71,13 +83,18 @@ router.beforeEach(async (to, from, next) => {
 
   // If the user is authenticated but settings are missing, fetch them
   if (authStore.isAuthenticated && !settingsStore.settings) {
-      try {
-        await authStore.fetchSessionInfo();
-        await settingsStore.fetchSettings();
-      } catch (error) {
-        authStore.logout('expired');
-        return next({ name: 'auth', query: { reason: 'session-expired' }});
-      }
+    try {
+      await authStore.fetchSessionInfo();
+      await settingsStore.fetchSettings();
+    } catch (error) {
+      authStore.logout('expired');
+      return next({ name: 'auth', query: { reason: 'session-expired' }});
+    }
+  }
+
+  // Optional: Log 404 attempts for debugging
+  if (to.name === 'NotFound') {
+    console.warn(`404: User attempted to access ${to.fullPath}`);
   }
 
   next();

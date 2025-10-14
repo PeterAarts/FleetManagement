@@ -3,61 +3,84 @@ import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import apiClient from '@/tools/apiClient';
+import { useVehiclesStore } from '@/stores/vehiclesStore';
+import { useDashboardStore } from '@/stores/dashboardStore';
 
-// Shadcn component imports
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-// Lucide icon imports
 import { Truck, ArrowRight, X } from 'lucide-vue-next'; 
 
-// State to control the visibility of the login panel
-const showLogin = ref(false);
-
-// ... existing script logic for the form ...
 const authStore = useAuthStore();
 const settingsStore = useSettingsStore();
+const vehiclesStore = useVehiclesStore();
+const dashboardStore = useDashboardStore();
 const router = useRouter();
+const route = useRoute();
+
+const showLogin = ref(false);
 const username = ref('');
 const password = ref('');
 const error = ref(null);
 const sessionMessage = ref('');
+const isLoading = ref(false);
 
 onMounted(() => {
-  const route = useRoute();
   if (route.query.reason === 'session-expired') {
     sessionMessage.value = 'Your session has expired. Please log in again.';
+  }
+  if (authStore.isAuthenticated) {
+   console.warn('Authenticated user on /auth route. Forcing state reset.');
+    authStore.resetAllApplicationState();
+    return; 
   }
 });
 
 const handleLogin = async () => {
   error.value = null;
+  isLoading.value = true;
+  
   try {
-    // 1. Log in and get the token
+    console.log('Step 1: Logging in...');
     await authStore.login({
       email: username.value,
       password: password.value,
     });
-    // 2. Fetch settings now that we are authenticated
+    
+    console.log('Step 2: Fetching settings...');
     await settingsStore.fetchSettings();
-    // 3. Redirect to the dashboard
+    
+    console.log('Step 3: Loading initial data...');
+    // Load BOTH vehicles and dashboard data before navigating
+    await Promise.all([
+      vehiclesStore.fetchVehicles(),
+      dashboardStore.fetchDashboardData()
+    ]);
+    
+    console.log('Step 4: Navigation to dashboard');
     router.push({ name: 'dashboard' });
+    
   } catch (err) {
-    error.value = 'Login failed. Please check your credentials.';
+    console.error('Login error:', err);
+    if (err.response?.status === 403) {
+      error.value = 'You do not have access to this application.';
+    } else {
+      error.value = err.response?.data?.message || 'Login failed.';
+    }
+  } finally {
+    isLoading.value = false;
   }
 };
 </script>
 
 <template>
-  <div class="grid lg:grid-cols-4 min-h-screen bg-primary-950 text-white overflow-hidden">
-    <div class="flex items-center justify-center p-8 col-span-3">
-      <div class="text-center">
-        <Truck class="mx-auto h-16 w-16 text-primary-300" />
-        <h1 class="mt-4 text-4xl font-bold">Welcome to Fleet Management NXT</h1>
-        <p class="mt-2 text-gray-400">The next generation of fleet monitoring and management.</p>
+  <div class="grid lg:grid-cols-4 min-h-screen bg-primary-800 text-white overflow-hidden">
+    <div class="flex items-center justify-center  col-span-3 ">
+      <div class="text-center p-24 rounded-xl bg-primary-950">
+        <Truck class="mx-auto h-24 w-24 text-primary-300" />
+        <h1 class="mt-4 text-4xl font-bold">Welcome to rFMS-Connect <br>Fleet Management </h1>
+        <p class="mt-2 text-gray-400">Your robust and simple fleet management solution.</p>
         
         <Button 
           @click="showLogin = true"
@@ -65,10 +88,10 @@ const handleLogin = async () => {
           class="mt-8 bg-primary-500"
           size="lg"
         >
-          Login to Your Account <ArrowRight class="ml-2 h-5 w-5" />
+          Login to Your Account <ArrowRight class="ml-2 text-primary-400 h-5 w-5" />
         </Button>
 
-        <p v-if="sessionMessage" class="my-6  text-red-400 p-3 rounded-md mx-auto ">
+        <p v-if="sessionMessage" class="my-6 text-red-400 p-3 rounded-md mx-auto ">
           {{ sessionMessage }}
         </p>
       </div>

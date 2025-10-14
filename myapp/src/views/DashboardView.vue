@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -17,6 +17,7 @@ import { Navigation, Bed, Wrench, ParkingSquare as SquareParking , CalendarCheck
 const dashboardStore = useDashboardStore();
 const settingsStore = useSettingsStore();
 const vehiclesStore = useVehiclesStore();
+
 const { selectedGroup } = storeToRefs(settingsStore);
 const { vehicles, vehicleAnalytics } = storeToRefs(vehiclesStore);
 
@@ -87,21 +88,32 @@ const isToday = (someDate) => {
     dateToCompare.getMonth() === today.getMonth() &&
     dateToCompare.getFullYear() === today.getFullYear();
 };
-// Watch for group changes ---
-watch(selectedGroup, (newGroupId) => {
-  if (newGroupId) {
-    dashboardStore.fetchDashboardData();
+
+// Watchers are now only for handling SUBSEQUENT changes when a user
+// manually selects a different customer from the dropdown.
+watch(selectedGroup, async (newGroupId, oldGroupId) => {
+  // Only refetch if this is a CHANGE (not initial load)
+  if (newGroupId && oldGroupId && newGroupId !== oldGroupId) {
+    console.log(`Customer switched from ${oldGroupId} to ${newGroupId}`);
+    await Promise.all([
+      dashboardStore.fetchDashboardData(),
+      vehiclesStore.fetchVehicles()
+    ]);
   }
-}, { immediate: true });
+});
 
-// --- Data Fetching and Auto-Refresh ---
-dashboardStore.fetchDashboardData(); // Dashboard-specific data still fetched here
+// Auto-Refresh setup remains the same
 useAutoRefresh(
-  () => vehiclesStore.fetchVehicles({ isBackground: true }), 
-  settingsStore.vehiclesRefreshRate
+  () => vehiclesStore.fetchVehicles({ isBackground: true }),
+  settingsStore.vehiclesRefreshRate,
+  false // ← Don't call immediately, data already loaded from AuthView
 );
-useAutoRefresh(dashboardStore.fetchDashboardData, settingsStore.dashboardRefreshRate);
 
+useAutoRefresh(
+  () => dashboardStore.fetchDashboardData(),
+  settingsStore.dashboardRefreshRate,
+  false // ← Don't call immediately, data already loaded from AuthView
+);
 </script>
 
 <template>
