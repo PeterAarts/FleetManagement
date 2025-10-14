@@ -240,8 +240,6 @@ const transformVehicleData = (vehicleData, speedingThreshold, memberOfGroupName 
       telltales.push({ [field]: vehicleData[field] });
     }
   }
-console.log('possibleFuelType raw value:', vehicleData.possibleFuelType);
-  console.log('possibleFuelType type:', typeof vehicleData.possibleFuelType);
   
   // Parse possibleFuelType from JSON string
   let fuelTypes = [];
@@ -249,24 +247,15 @@ console.log('possibleFuelType raw value:', vehicleData.possibleFuelType);
   
   if (vehicleData.possibleFuelType) {
     try {
-      console.log('Attempting to parse:', vehicleData.possibleFuelType);
-      
-      // It's stored as a JSON string: "[\"DIESEL\"]"
       const parsed = JSON.parse(vehicleData.possibleFuelType);
-      console.log('Parsed result:', parsed);
-      
       if (Array.isArray(parsed)) {
         fuelTypes = parsed;
         fuelTypeDisplay = parsed.join(', '); // "DIESEL" or "DIESEL, ELECTRIC"
-        console.log('Final display:', fuelTypeDisplay);
       }
     } catch (e) {
-      console.error('Error parsing possibleFuelType:', e);
       fuelTypeDisplay = vehicleData.possibleFuelType; // Fallback to raw string
     }
-  } else {
-    console.log('possibleFuelType is null/undefined');
-  }
+  } 
 
   return {
     id: vehicleData.id,
@@ -425,11 +414,9 @@ export class VehicleService {
   try {
     // Get vehicle details
     const vehicleData = await this.getSingleVehicleDetails(id, customerId);
-    
     if (!vehicleData) {
       return null;
     }
-
     // Fetch MOT and tachograph dates for warning calculation
     const datesQuery = `
       SELECT 
@@ -529,18 +516,16 @@ export class VehicleService {
         return []; // Return an empty array if no TPMS data is found
       }
 
-      // MODIFIED: Process the results into an array of objects,
+      // Process the results into an array of objects,
       // parsing the 'sensors' JSON string along the way.
       const processedData = results.map(record => {
         let parsedSensors = [];
         try {
-          // The 'sensors' column in the database is a JSON string
           if (record.sensors) {
             parsedSensors = JSON.parse(record.sensors);
           }
         } catch (error) {
           console.error(`Error parsing sensors JSON for VIN ${record.vin}:`, error);
-          // Leave sensors as an empty array if parsing fails
         }
         
         return {
@@ -556,7 +541,6 @@ export class VehicleService {
           createdDateTime: record.createdDateTime,
         };
       });
-      
       return processedData;
       
     } catch (error) {
@@ -653,18 +637,32 @@ export class VehicleService {
       // CHANGED: Query now joins the 'driver' table to get the driver's name
       const query = `
         SELECT
-          t.Trip_NO as id,
-          t.StartDate,
-          t.EndDate,
-          t.Distance as distanceKm,
-          t.Duration,
-          CONCAT(d.Lastname, ', ', d.Surname) AS driverName
+          t.Trip_NO AS id,
+          IF(d.Lastname is NULL or d.Lastname='',d.tachoDriverIdentification,CONCAT(d.Lastname,', ',d.Surname)) AS driver,
+          date(t.StartDate) as date,
+          time(t.startdate) as startTime,
+          time(t.enddate) as endTime,
+          d.id as DriverId,
+          t.Distance,
+          t.FuelUsed,
+          ROUND(100/(SUM(t.Distance)/SUM(t.FuelUsed)),1) AS FuelUsage,
+          ROUND(SUM(t.CO2_emission),0) AS CO2_emission,
+          DATE_FORMAT(SEC_TO_TIME(SUM(TIME_TO_SEC(t.Duration))),'%H:%i') AS Duration,
+          DATE_FORMAT(SEC_TO_TIME(SUM(t.DriveTime)),'%H:%i') AS DriveTime,
+          DATE_FORMAT(SEC_TO_TIME(SUM(t.IdleTime)),'%H:%i') AS IdleTime,
+          (SELECT DATEDIFF(t.startdate,pdc_register.createdDate) FROM PDC_REGISTER    		        WHERE date(pdc_register.createdDate)<date(t.startdate) AND pdc_register.vehicle=t.vin ORDER BY pdc_register.createdDate DESC LIMIT 1) AS DAYS_NO_PDC,
+          (SELECT round(t.end_odometer/1000)-pdc_register.vehicle_odometer FROM PDC_REGISTER			WHERE date(pdc_register.createdDate)<date(t.startdate) AND pdc_register.vehicle=t.vin ORDER BY pdc_register.createdDate DESC LIMIT 1) AS KM_NO_PDC,
+          (SELECT COUNT(id) FROM PDC_REGISTER         WHERE date(pdc_register.createdDate)=date(t.startdate) AND pdc_register.vehicle=t.vin) AS has_PDC,
+          (SELECT COUNT(damages) FROM PDC_REGISTER    WHERE date(pdc_register.createdDate)=date(t.startdate) AND pdc_register.vehicle=t.vin) AS Count_Damages
         FROM trips t
-        INNER JOIN vehicles v ON t.VIN = v.VIN
-        LEFT JOIN driver d ON t.Driver1ID = d.tachoDriverIdentification
+          LEFT JOIN vehicles v ON t.VIN = v.VIN
+          LEFT JOIN driver d ON t.Driver1ID = d.tachoDriverIdentification
         WHERE
           v.id = :vehicleId AND
-          v.cust_id = :customerId
+          v.cust_id = :customerId AND
+          t.Distance > 2
+        GROUP BY 
+          t.trip_no 
         ORDER BY t.StartDate DESC
         LIMIT :limit
       `;
@@ -676,18 +674,21 @@ export class VehicleService {
 
       // Format the raw data for the front-end
       return trips.map(trip => {
-        const startDate = new Date(trip.StartDate);
-        const endDate = new Date(trip.EndDate);
-
-        // CHANGED: The returned object now includes the requested fields
         return {
           id: trip.id,
-          driverName: trip.driverName || 'No driver assigned',
-          distanceKm: parseFloat(trip.distanceKm).toFixed(0),
+          driverName: trip.driver || 'No driver assigned',
+          distance: trip.Distance,
           duration: formatTripDuration(trip.Duration),
-          date: startDate.toISOString().split('T')[0], // e.g., 2025-09-21
-          startTime: startDate.toTimeString().substring(0, 5), // e.g., 08:30
-          endTime: endDate.toTimeString().substring(0, 5),     // e.g., 16:45
+          fuelUsed: trip.FuelUsed,
+          fuelUsage: trip.FuelUsage,
+          CO2_emission: trip.CO2_emission,
+          has_PDC: trip.has_PDC,
+          driveTime: trip.DriveTime,
+          idleTime: trip.IdleTime,
+          daysNoPDC: trip.DAYS_NO_PDC,
+          date: trip.date,
+          startTime: trip.startTime,
+          endTime: trip.endTime,
         };
       });
 

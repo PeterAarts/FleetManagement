@@ -1,61 +1,104 @@
+// ============================================
+// FILE: routes/settings.js (FIXED)
+// ============================================
 import express from 'express';
 import db from '../models/index.js';
 import { sessionAuth } from '../middleware/sessionAuth.js';
 import { QueryTypes } from 'sequelize';
+import { extractDomain, validateDomainAccess } from '../middleware/domainAccessValidator.js';
 
 const router = express.Router();
 const { Settings, sequelize } = db;
 
-router.get('/', sessionAuth, async (req, res) => {
-  // CORRECT: Get both the selected ID and the user's primary ID from the session
-  const selectedCustomerId = req.user.selectedCustomerId;
-  const primaryCustomerId = req.user.customerId; // This is the user's main account ID
-
+/**
+ * Get domain settings based on the actual frontend domain
+ */
+router.get('/domain', sessionAuth, async (req, res) => {
   try {
-    // The settings should be fetched for the currently SELECTED customer
-    const settingsPromise = Settings.findOne({
-      where: { customer_id: selectedCustomerId }
+    const frontendDomain = extractDomain(req);
+    const validation = await validateDomainAccess(req.user.userId, req.user.customerId, frontendDomain);
+    
+    if (!validation.hasAccess) {
+      return res.status(403).json({ 
+        message: 'You do not have access to this domain.',
+        reason: validation.reason
+      });
+    }
+    
+    if (!validation.settings) {
+      return res.status(404).json({ 
+        message: 'No settings found for this domain.',
+        domain: frontendDomain
+      });
+    }
+
+    res.json({ settings: validation.settings });
+
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+/**
+ * Get customer context - available groups and selected customer
+ * Based on the DOMAIN's customer, not the user's customer
+ */
+router.get('/customer-context', sessionAuth, async (req, res) => {
+  try {
+    const frontendDomain = extractDomain(req);
+    
+    const domainSettings = await Settings.findOne({
+      where: { domain: frontendDomain }
     });
 
+    if (!domainSettings) {
+      return res.status(404).json({ 
+        message: 'Domain settings not found',
+        domain: frontendDomain
+      });
+    }
+
+    const domainCustomerId = domainSettings.customer_id;
+    
+    // Get selected customer from session, or default to domain customer
+    let selectedCustomerId = req.session.selectedCustomerId || domainCustomerId;
+
+    // Fetch the actual groups with the filter
     const groupsQuery = `
       SELECT 
         c.id,
-        CONCAT(IF(c.id = :primaryCustomerId, '*', ''), ' ', c.name) AS name
+        c.name,
+        CONCAT(IF(c.id = :domainCustomerId, '* ', ''), c.name) AS displayName
       FROM 
         customer_customer cc  
         LEFT JOIN customers c ON c.id = cc.relatedCustomerId 
       WHERE 
-        -- CORRECT: The list of available groups should always be based on the PRIMARY customer ID
-        cc.custId = :primaryCustomerId AND 
+        cc.custId = :domainCustomerId AND 
         cc.active = 1 AND 
         CURDATE() BETWEEN cc.created AND cc.validUntil
       ORDER BY 
-        IF(c.id = :primaryCustomerId, 0, 1), name ASC
+        IF(c.id = :domainCustomerId, 0, 1), c.name ASC
     `;
     
-    // The groups list should be fetched for the PRIMARY customer
-    const groupsPromise = sequelize.query(groupsQuery, {
-      replacements: { 
-        primaryCustomerId: primaryCustomerId, // Use the correct ID here
-        selectedCustomerId: selectedCustomerId 
-      },
+    const groups = await sequelize.query(groupsQuery, {
+      replacements: { domainCustomerId: domainCustomerId },
       type: QueryTypes.SELECT
     });
 
-    const [settings, groups] = await Promise.all([settingsPromise, groupsPromise]);
-
-    if (!settings) {
-      return res.status(404).json({ message: 'Settings not found for this customer.' });
-    }
+    // ============================================================
+    // CRITICAL FIX: Update session with selectedCustomerId
+    // ============================================================
+    req.session.selectedCustomerId = parseInt(selectedCustomerId, 10);
+    // ============================================================
 
     res.json({ 
-      settings, 
-      groups,
-      selectedCustomerId: selectedCustomerId
+      groups: groups.map(g => ({ id: g.id, name: g.displayName })),
+      selectedCustomerId: req.session.selectedCustomerId,
+      domainCustomerId: domainCustomerId
     });
 
   } catch (error) {
-    console.error('Error fetching settings and groups:', error);
+    console.error('Error fetching customer context:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

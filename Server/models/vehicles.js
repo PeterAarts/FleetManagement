@@ -40,12 +40,6 @@ export default function(sequelize) {
   });
 
   Vehicle.associate = (models) => {
-        // --- ADD THESE DEBUG LINES ---
-    console.log('--- Debugging Associations in Vehicle Model ---');
-    console.log('Available models in "models" object:', Object.keys(models));
-    console.log('Is models.Driver defined?', !!models.Driver);
-    console.log('Is models.Customer defined?', !!models.Customer);
-    // ----------------------------
     Vehicle.belongsTo(models.Customer, { foreignKey: 'cust_id' });
     Vehicle.belongsTo(models.Driver,   { foreignKey: 'Driver1_ID', targetKey: 'tachoDriverIdentification', as: 'Driver1' });
     Vehicle.belongsTo(models.Driver,   { foreignKey: 'Driver2_ID', targetKey: 'tachoDriverIdentification', as: 'Driver2' });

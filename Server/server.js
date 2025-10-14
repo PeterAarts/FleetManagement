@@ -56,7 +56,7 @@ async function startServer() {
       preload: true
     }
   }));
-
+  console.log(' - Helmet initialized')
   // Rate limiting - protect against DDoS and brute force
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -71,11 +71,12 @@ async function startServer() {
     skip: (req, res) => {
       return req.path === '/api/auth/login' && res.statusCode < 400;
     }
+
   });
 
   // Apply rate limiting to all API routes
   app.use('/api/', limiter);
-
+  console.log(' - Limiter initialized')
   // Input sanitization - prevents NoSQL injection attacks
   app.use(ExpressMongoSanitize({
     replaceWith: '_'
@@ -85,7 +86,7 @@ async function startServer() {
   app.use(hpp({
     whitelist: ['sort', 'filter'] // Allow these parameters to appear multiple times
   }));
-  
+  console.log(' - HPP initialized')
   // Body parsing with security limits
   app.use(express.json({ 
     limit: '10kb',
@@ -101,6 +102,7 @@ async function startServer() {
 
   // Session management
   app.use(sessionConfig);
+  console.log(' - Session Configuration initialized')
 
   // --- CORS Configuration with Development Fix ---
   const corsOptions = {
@@ -156,7 +158,7 @@ async function startServer() {
   };
 
   app.use(cors(corsOptions));
-
+  console.log(' - Cors initialized')
   // Enhanced Morgan logging with security information
   morgan.token('body', (req) => {
     // Don't log sensitive data
@@ -192,6 +194,7 @@ async function startServer() {
       return process.env.NODE_ENV === 'production' && req.url === '/health';
     }
   }));
+  console.log(' - Morgan logging initialized')
 
   // Health check endpoint (before authentication)
   app.get('/health', (req, res) => {
@@ -219,6 +222,7 @@ async function startServer() {
 
   if (process.env.NODE_ENV === 'development') {
     app.use('/api/debug', debugRoutes);
+    console.log(' - Development Debug initialised')
   }
   // Global error handler
   app.use((err, req, res, next) => {
@@ -255,6 +259,7 @@ async function startServer() {
       timestamp: new Date().toISOString()
     });
   });
+  console.log(' - 404-page handler initialised')
 
   // Graceful shutdown handling
   const server = app.listen(PORT, () => {

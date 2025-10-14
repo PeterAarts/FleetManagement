@@ -1,43 +1,44 @@
 // ============================================
-// FILE: middleware/sessionAuth.js (NEW FILE - Replaces isAuthenticated.js usage)
+// FILE: middleware/sessionAuth.js (SECURED)
 // ============================================
 import jwt from 'jsonwebtoken';
-import db from '../models/index.js';
 
 export const sessionAuth = async (req, res, next) => {
-  // First check if user has a valid session
-  if (req.session && req.session.userId && req.session.customerId) {
-    // User is authenticated via session
-    req.user = {
-      id: req.session.userId,
-      userId: req.session.userId, // Keep both for compatibility
-      customerId: req.session.customerId,
-      username: req.session.username,
-      selectedCustomerId: req.session.selectedCustomerId || req.session.customerId,
-    };
-    return next();
-  }
-
-  // Fallback to JWT authentication
+  // CRITICAL: API endpoints MUST have Authorization header
+  // Even if there's a valid session, we require explicit JWT for API access
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Authentication required. check1' });
-  }
   
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Check if there's a valid session (for error message purposes)
+    if (req.session && req.session.userId) {
+      return res.status(401).json({ 
+        message: 'API access requires Bearer token. Direct browser access is not allowed.'
+      });
+    }
+    return res.status(401).json({ 
+      message: 'Authentication required. No token provided.' 
+    });
+  }
+  // Validate JWT token
   const token = authHeader.split(' ')[1];
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Create/update session from JWT
-    req.session.userId = payload.userId;
-    req.session.customerId = payload.customerId;
-    req.session.username = payload.username;
+    // Create/update session from JWT for activity tracking
+    if (!req.session.userId) {
+      req.session.userId = payload.userId;
+      req.session.customerId = payload.customerId;
+      req.session.username = payload.username;
+    }
     
     // Set selectedCustomerId if not already set
     if (!req.session.selectedCustomerId) {
       req.session.selectedCustomerId = payload.customerId;
     }
+    
+    // Update last activity timestamp in session
+    req.session.lastActivityTime = Date.now();
     
     req.user = {
       id: payload.userId,
@@ -49,6 +50,9 @@ export const sessionAuth = async (req, res, next) => {
     
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid or expired token.' });
+    return res.status(401).json({ 
+      message: 'Invalid or expired token.',
+      error: error.message 
+    });
   }
 };

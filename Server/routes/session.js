@@ -1,13 +1,14 @@
 // ============================================
-// FILE: routes/session.js (SIMPLIFIED VERSION)
+// FILE: routes/session.js (FIXED)
 // ============================================
 import express from 'express';
 import { sessionAuth } from '../middleware/sessionAuth.js';
+import { extractDomain } from '../middleware/domainAccessValidator.js';
 import db from '../models/index.js';
 import { QueryTypes } from 'sequelize';
 
 const router = express.Router();
-const { sequelize } = db;
+const { Settings, sequelize } = db;
 
 // Get current session info
 router.get('/info', sessionAuth, (req, res) => {
@@ -23,23 +24,48 @@ router.get('/info', sessionAuth, (req, res) => {
 // Update selected customer (for switching between related customers)
 router.put('/customer', sessionAuth, async (req, res) => {
   const { customerId } = req.body;
-  
+  /*
+  console.log('=== UPDATE SELECTED CUSTOMER ===');
+  console.log('Request body:', req.body);
+  console.log('Requested customerId:', customerId, '(type:', typeof customerId, ')');
+  console.log('User session customerId:', req.session.customerId);
+  console.log('Current selectedCustomerId:', req.session.selectedCustomerId);
+  */
   if (!customerId) {
     return res.status(400).json({ message: 'Customer ID is required' });
   }
 
   try {
-    // Use a direct query to check if user has access to this customer
-    // This matches the approach used in settings.js
+    // Extract domain to find which customer this domain belongs to
+    const frontendDomain = extractDomain(req);
+    
+//    console.log('Domain:', frontendDomain);
+    
+    // Find the domain's customer
+    const domainSettings = await Settings.findOne({
+      where: { domain: frontendDomain }
+    });
+
+    if (!domainSettings) {
+      return res.status(404).json({ 
+        message: 'Domain settings not found',
+        domain: frontendDomain
+      });
+    }
+
+    const domainCustomerId = domainSettings.customer_id;
+    
+//    console.log('Domain customer:', domainCustomerId);
+    
+    // Check if target customer is accessible from the DOMAIN's customer
+    // (not the user's customer)
     const accessQuery = `
-      SELECT 
-        c.id,
-        c.name
+      SELECT c.id,c.name
       FROM 
         customer_customer cc  
         LEFT JOIN customers c ON c.id = cc.relatedCustomerId 
       WHERE 
-        cc.custId = :userCustomerId 
+        cc.custId = :domainCustomerId 
         AND cc.active = 1 
         AND CURDATE() BETWEEN cc.created AND cc.validUntil
         AND c.id = :targetCustomerId
@@ -47,26 +73,31 @@ router.put('/customer', sessionAuth, async (req, res) => {
     
     const accessResults = await sequelize.query(accessQuery, {
       replacements: { 
-        userCustomerId: req.session.customerId,
+        domainCustomerId: domainCustomerId,
         targetCustomerId: customerId 
       },
       type: QueryTypes.SELECT
     });
 
-    // Check if the user can access this customer
-    const canAccess = (
-      parseInt(customerId) === req.session.customerId || // User's own customer
-      accessResults.length > 0 // Found in related customers
-    );
+//    console.log('Access check results:', accessResults.length > 0 ? 'Access granted' : 'Access denied');
+
+    // Check if the target customer is accessible
+    const canAccess = accessResults.length > 0;
 
     if (!canAccess) {
+//      console.warn('Access denied to customer', customerId);
       return res.status(403).json({ 
-        message: 'You do not have access to this customer' 
+        message: 'You do not have access to this customer',
+        domainCustomerId: domainCustomerId,
+        requestedCustomerId: customerId
       });
     }
 
     // Update session
     req.session.selectedCustomerId = parseInt(customerId);
+    
+//    console.log('✓ Session updated, selectedCustomerId:', req.session.selectedCustomerId);
+//    console.log('=== END UPDATE ===');
     
     res.json({
       message: 'Selected customer updated',
@@ -74,7 +105,7 @@ router.put('/customer', sessionAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating selected customer:', error);
+//    console.error('Error updating selected customer:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

@@ -1,5 +1,5 @@
 // ============================================
-// FILE: routes/auth.js (UPDATE EXISTING)
+// FILE: routes/auth.js (SIMPLIFIED)
 // ============================================
 import express from 'express';
 import bcrypt from 'bcryptjs';
@@ -8,6 +8,7 @@ import db from '../models/index.js';
 
 import { sessionAuth } from '../middleware/sessionAuth.js';
 import { getActivityStatus } from '../middleware/activityTracker.js';
+import { extractDomain, validateDomainAccess } from '../middleware/domainAccessValidator.js';
 
 const router = express.Router();
 const { User } = db;
@@ -20,9 +21,9 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    console.log('Login request received for email:', email);
+//    console.log('Login request received for email:', email);
     const user = await User.unscoped().findOne({ where: { email: email } });
-    console.log('Login attempt for user:', user.username ? user.username : 'Unknown');
+//    console.log('Login attempt for user:', user?.username ? user.username : 'Unknown');
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -34,14 +35,33 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // >>> NEW: Create session <<<
+//    console.log('✓ Password validated for user:', user.username);
+
+    // === DOMAIN VALIDATION (using shared utility) ===
+    const frontendDomain = extractDomain(req);
+//    console.log('Login from domain:', frontendDomain);
+    
+    const validation = await validateDomainAccess(user.id, user.cust_id, frontendDomain);
+    
+    if (!validation.hasAccess) {
+      return res.status(403).json({ 
+        message: 'You do not have access to this application. Check if you are using the correct url',
+        reason: validation.reason,
+        domain: frontendDomain
+      });
+    }
+    
+  //  console.log('✓ Domain access validated:', validation.reason);
+    // === END DOMAIN VALIDATION ===
+
+    // Create session
     req.session.userId = user.id;
     req.session.customerId = user.cust_id;
     req.session.username = user.username;
-    req.session.selectedCustomerId = user.cust_id; // Default to user's own customer
+    req.session.selectedCustomerId = user.cust_id;
     req.session.loginTime = new Date();
 
-    // Generate JWT token (keep for backward compatibility)
+    // Generate JWT token
     const payload = {
       userId: user.id,
       customerId: user.cust_id,
@@ -49,6 +69,8 @@ router.post('/login', async (req, res) => {
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '4h' });
+    
+  //  console.log('✓ Login successful for user:', user.username);
     
     res.json({ 
       token,
@@ -61,12 +83,11 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
+  //  console.error('Login error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-// >>> NEW: Add logout endpoint <<<
 router.post('/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
@@ -79,9 +100,7 @@ router.post('/logout', (req, res) => {
 
 router.get('/activity-status', sessionAuth, getActivityStatus);
 router.post('/activity-ping', sessionAuth, (req, res) => {
-  // The 'trackActivity' middleware (applied in server.js) automatically
-  // updates the user's last activity time. We just need to send a
-  // success response to acknowledge the ping.
   res.status(200).json({ message: 'Activity acknowledged' });
 });
+
 export default router;
