@@ -19,6 +19,7 @@ This project features a robust state management system using Pinia, seamless API
 * Real-time Data Updates: An auto-refresh feature that polls the API to fetch the latest data periodically, ensuring the UI is always in sync.
 * Modern Tooling: Vite for lightning-fast development and builds.
 * Code Quality: Pre-configured with ESLint and Prettier for consistent code style.
+* Self developed FormBuilder (based on structure stored in database)
 # Tech Stack
 * Framework: Vue 3
 * State Management: Pinia
@@ -207,3 +208,22 @@ Contributions are welcome! Please feel free to open an issue or submit a pull re
 
 # License
 This project is licensed under the MIT License.
+
+#Information related to the formbuilder
+
+ResourceListView.vue
+  ↓
+  → Uses modalConfig from resourceConfigs.js
+  ↓
+ResourceDetailModal.vue
+  ↓
+  → Renders formTitle in header (DEMOTRUCK115, trailer, timestamp)
+  → Renders formTabs as clickable tabs
+  → First tab = DynamicForm (from formBuilder database)
+  → Other tabs = Load specific data (trips, damages, etc.)
+  ↓
+DynamicForm.vue
+  ↓
+  → Renders VEHICLE SETTINGS, DETAILS, STATUS groups
+  → Shows WARNING section
+  → All field definitions from database formBuilder
