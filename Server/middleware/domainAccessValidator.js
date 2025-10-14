@@ -17,7 +17,6 @@ export function extractDomain(req) {
       const url = new URL(origin);
       return url.hostname;
     } catch (e) {
- //     console.warn('Could not parse origin:', origin);
       return 'localhost';
     }
   }
@@ -59,22 +58,17 @@ export async function isSuperAdmin(userId, userCustomerId) {
  * Returns: { hasAccess: boolean, reason: string, settings: object|null }
  */
 export async function validateDomainAccess(userId, userCustomerId, frontendDomain) {
-//  console.log('=== DOMAIN ACCESS VALIDATION ===');
-//  console.log('Domain:', frontendDomain);
-//  console.log('User ID:', userId);
-//  console.log('User customer:', userCustomerId, '(type:', typeof userCustomerId, ')');
-  
+
   // Find settings for this domain
   const settings = await Settings.findOne({
     where: { domain: frontendDomain }
   });
 
   if (!settings) {
- //   console.warn('No settings found for domain:', frontendDomain);
+
     
     // In development, allow without settings
     if (process.env.NODE_ENV !== 'production') {
- //     console.warn('Development mode: Allowing without domain settings');
       return {
         hasAccess: true,
         reason: 'Development mode',
@@ -89,31 +83,17 @@ export async function validateDomainAccess(userId, userCustomerId, frontendDomai
     };
   }
 
-  /*console.log('Found settings:', {
-    domain: settings.domain,
-    customer_id: settings.customer_id,
-    site_name: settings.site_name
-  });*/
-
   const domainCustomerId = settings.customer_id;
   
-  //console.log('Domain customer:', domainCustomerId, '(type:', typeof domainCustomerId, ')');
-  
+
   // Check if user is super admin
   const isUserSuperAdmin = await isSuperAdmin(userId, userCustomerId);
   
   // Check if user's customer matches domain's customer (type-safe comparison)
   const hasDirectAccess = Number(userCustomerId) === Number(domainCustomerId);
-  
-  /*console.log('Access check:', {
-    isSuperAdmin: isUserSuperAdmin,
-    hasDirectAccess: hasDirectAccess,
-    comparison: `${Number(userCustomerId)} === ${Number(domainCustomerId)}`
-  });*/
-  
+
   // Grant access if super admin OR direct customer match
   if (isUserSuperAdmin) {
-  //  console.log('✓ Access granted: Super Admin');
     return {
       hasAccess: true,
       reason: 'Super Admin',
@@ -122,16 +102,12 @@ export async function validateDomainAccess(userId, userCustomerId, frontendDomai
   }
   
   if (hasDirectAccess) {
-  //  console.log('✓ Access granted: Direct customer match');
     return {
       hasAccess: true,
       reason: 'Customer match',
       settings: settings
     };
   }
-  
-  //console.warn(`❌ Access DENIED: User ${userId} (customer ${userCustomerId}) cannot access domain ${frontendDomain} (customer ${domainCustomerId})`);
-  
   return {
     hasAccess: false,
     reason: 'User customer does not match domain customer',

@@ -24,13 +24,6 @@ router.get('/info', sessionAuth, (req, res) => {
 // Update selected customer (for switching between related customers)
 router.put('/customer', sessionAuth, async (req, res) => {
   const { customerId } = req.body;
-  /*
-  console.log('=== UPDATE SELECTED CUSTOMER ===');
-  console.log('Request body:', req.body);
-  console.log('Requested customerId:', customerId, '(type:', typeof customerId, ')');
-  console.log('User session customerId:', req.session.customerId);
-  console.log('Current selectedCustomerId:', req.session.selectedCustomerId);
-  */
   if (!customerId) {
     return res.status(400).json({ message: 'Customer ID is required' });
   }
@@ -38,9 +31,6 @@ router.put('/customer', sessionAuth, async (req, res) => {
   try {
     // Extract domain to find which customer this domain belongs to
     const frontendDomain = extractDomain(req);
-    
-//    console.log('Domain:', frontendDomain);
-    
     // Find the domain's customer
     const domainSettings = await Settings.findOne({
       where: { domain: frontendDomain }
@@ -54,9 +44,6 @@ router.put('/customer', sessionAuth, async (req, res) => {
     }
 
     const domainCustomerId = domainSettings.customer_id;
-    
-//    console.log('Domain customer:', domainCustomerId);
-    
     // Check if target customer is accessible from the DOMAIN's customer
     // (not the user's customer)
     const accessQuery = `
@@ -79,8 +66,6 @@ router.put('/customer', sessionAuth, async (req, res) => {
       type: QueryTypes.SELECT
     });
 
-//    console.log('Access check results:', accessResults.length > 0 ? 'Access granted' : 'Access denied');
-
     // Check if the target customer is accessible
     const canAccess = accessResults.length > 0;
 
@@ -95,17 +80,12 @@ router.put('/customer', sessionAuth, async (req, res) => {
 
     // Update session
     req.session.selectedCustomerId = parseInt(customerId);
-    
-//    console.log('✓ Session updated, selectedCustomerId:', req.session.selectedCustomerId);
-//    console.log('=== END UPDATE ===');
-    
     res.json({
       message: 'Selected customer updated',
       selectedCustomerId: req.session.selectedCustomerId,
     });
 
   } catch (error) {
-//    console.error('Error updating selected customer:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

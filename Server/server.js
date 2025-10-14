@@ -126,22 +126,6 @@ async function startServer() {
         if (allowedOrigins.includes(origin) || allowedOrigins.includes(hostname)) {
           return callback(null, true);
         }
-
-        // Fallback: Check database for dynamic domain whitelist
-        // Uncomment and adjust this section when you have db connection ready
-        /*
-        const conn = await db.getConnection();
-        const [rows] = await conn.query('SELECT 1 FROM settings WHERE domain = ? LIMIT 1', [hostname]);
-        
-        if (rows.length > 0) {
-          callback(null, true); // Domain is in the whitelist
-        } else {
-          logger.warn(`CORS blocked request from: ${origin}`);
-          callback(new Error('Not allowed by CORS'));
-        }
-        conn.release();
-        */
-        
         // For now, reject unknown origins in production
         logger.warn(`CORS blocked request from: ${origin}`);
         callback(new Error('Not allowed by CORS'));
